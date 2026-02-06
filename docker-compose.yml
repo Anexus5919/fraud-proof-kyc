@@ -20,5 +20,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # FastAPI backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kyc-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kyc:localdev@db:5432/kyc_db
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176
+      SPOOF_THRESHOLD: "0.55"
+      DUPLICATE_THRESHOLD: "0.55"
+    volumes:
+      - ml_models:/app/ml_models
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  ml_models:
