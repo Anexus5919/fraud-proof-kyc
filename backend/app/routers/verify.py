@@ -26,7 +26,6 @@ from app.services.face_embedder import (
 from app.services.spoof_detector import check_spoof
 from app.services.deepfake_detector import check_deepfake
 from app.services.deduplication import find_similar_faces, add_face_embedding
-from app.services.storage import upload_image
 from app.services.risk_scorer import calculate_risk_score, RiskDecision
 
 logger = logging.getLogger(__name__)
@@ -218,7 +217,7 @@ async def verify_face(
             deepfake_score = 0.65
             deepfake_details = {'error': str(e), 'fallback': True}
 
-        logger.info(f"[L3] Authenticity score: {deepfake_score:.4f} (pass threshold=0.4)")
+        logger.info(f"[L3] Authenticity score: {deepfake_score:.4f} (pass threshold=0.20)")
         logger.info(f"[L3] Method: {deepfake_details.get('method', 'unknown')}")
         if 'ml_model' in deepfake_details:
             ml = deepfake_details['ml_model']
@@ -235,14 +234,14 @@ async def verify_face(
         if deepfake_details.get('critical_flag'):
             logger.warning(f"[L3] CRITICAL FLAG: {deepfake_details['critical_flag']}")
 
-        deepfake_passed = deepfake_score >= 0.4
+        deepfake_passed = deepfake_score >= 0.20
         layer_results['layer3_deepfake'] = {
             'status': 'passed' if deepfake_passed else 'failed',
             'score': round(deepfake_score, 3),
         }
 
         if not deepfake_passed:
-            logger.warning(f"[L3] FAILED — {deepfake_score:.4f} < 0.4")
+            logger.warning(f"[L3] FAILED — {deepfake_score:.4f} < 0.20")
             await log_audit(db, request.session_id, "verify", "deepfake_detected",
                 {"deepfake_score": deepfake_score, "details": deepfake_details}, http_request)
             return VerifyResponse(
@@ -289,20 +288,25 @@ async def verify_face(
                 'top_similarity': round(best_match['similarity'], 3),
             }
 
-            # Upload image for review
-            logger.info("[L4] Uploading image for review...")
-            image_url = upload_image(
-                request.image, folder="kyc/reviews",
-                public_id=f"review_{request.session_id}"
+            # Build data URI for the new face image
+            new_face_data_uri = f"data:image/jpeg;base64,{request.image}"
+
+            # Fetch matched customer's face image from DB
+            matched_image_result = await db.execute(
+                text("SELECT face_image FROM customer_faces WHERE customer_id = :cid LIMIT 1"),
+                {"cid": best_match["customer_id"]}
             )
-            logger.info(f"[L4] Image uploaded: {image_url or 'FAILED'}")
+            matched_image_row = matched_image_result.fetchone()
+            matched_face_image = matched_image_row.face_image if matched_image_row else None
+            logger.info(f"[L4] Matched customer image: {'found' if matched_face_image else 'not found'}")
 
             review_id = await create_review_entry(
                 db, new_customer_id=request.session_id,
-                new_embedding=embedding, new_image_url=image_url,
+                new_embedding=embedding, new_image_url=new_face_data_uri,
                 matched_customer_id=best_match["customer_id"],
                 matched_customer_name=best_match.get("customer_name"),
-                similarity_score=best_match["similarity"]
+                similarity_score=best_match["similarity"],
+                matched_face_image_url=matched_face_image
             )
             logger.info(f"[L4] Review entry created: {review_id}")
 
@@ -373,13 +377,47 @@ async def verify_face(
             logger.info(f"    {layer_name:15s}: {breakdown}")
         logger.info(f"[L5] time={time.time()-t5:.3f}s")
 
+        # ── BUILD FULL TELEMETRY ────────────────────────────────
+        full_telemetry = {
+            "risk_score": risk_assessment.score,
+            "risk_level": risk_assessment.level.value,
+            "risk_decision": risk_assessment.decision.value,
+            "flags": risk_assessment.flags,
+            "risk_factors": risk_assessment.factors,
+            "risk_breakdown": {k: str(v) for k, v in risk_assessment.breakdown.items()},
+            "spoof_score": round(spoof_score, 4),
+            "spoof_adjusted": round(adjusted_spoof_score, 4),
+            "spoof_details": {k: (round(v, 4) if isinstance(v, float) else v)
+                              for k, v in spoof_details.get("individual_scores", {}).items()},
+            "spoof_critical_warnings": spoof_details.get("critical_warnings", []),
+            "deepfake_score": round(deepfake_score, 4),
+            "deepfake_method": deepfake_details.get("method"),
+            "deepfake_ml": deepfake_details.get("ml_model", {}),
+            "deepfake_frequency": deepfake_details.get("frequency_analysis", {}),
+            "deepfake_critical_flag": deepfake_details.get("critical_flag"),
+            "motion_penalty": motion_penalty,
+            "motion_flags": motion_flags,
+            "challenges_completed": request.challenges_completed,
+            "layer_results": layer_results,
+            "pipeline_time_s": round(time.time() - pipeline_start, 3),
+        }
+        if request.motion_analysis:
+            full_telemetry["motion_analysis"] = {
+                "liveness_score": request.motion_analysis.liveness_score,
+                "frames_analyzed": request.motion_analysis.frames_analyzed,
+                "micro_movement_avg": request.motion_analysis.micro_movement_avg,
+                "parallel_motion_corr": request.motion_analysis.parallel_motion_corr,
+                "motion_variance_spread": request.motion_analysis.motion_variance_spread,
+                "flags": request.motion_analysis.flags,
+            }
+
         # ── FINAL DECISION ───────────────────────────────────────
         _log_separator("FINAL DECISION")
 
         if risk_assessment.decision == RiskDecision.AUTO_REJECT:
             logger.warning(f"[DECISION] AUTO_REJECT — risk={risk_assessment.score}, flags={risk_assessment.flags}")
             await log_audit(db, request.session_id, "verify", "rejected",
-                {"risk_score": risk_assessment.score, "flags": risk_assessment.flags}, http_request)
+                {**full_telemetry}, http_request)
             elapsed = time.time() - pipeline_start
             logger.info(f"[PIPELINE] Completed in {elapsed:.3f}s → REJECTED")
             return VerifyResponse(
@@ -396,8 +434,9 @@ async def verify_face(
 
             logger.info(f"[DECISION] PENDING_REVIEW (duplicate) — risk={risk_assessment.score}, customer_id={customer_id}")
             await log_audit(db, request.session_id, "verify", "pending_review",
-                {"customer_id": customer_id, "risk_score": risk_assessment.score,
-                 "flags": risk_assessment.flags}, http_request)
+                {**full_telemetry, "customer_id": customer_id,
+                 "duplicate_match": best_match["customer_id"],
+                 "duplicate_similarity": best_match["similarity"]}, http_request)
 
             elapsed = time.time() - pipeline_start
             logger.info(f"[PIPELINE] Completed in {elapsed:.3f}s → PENDING_REVIEW (duplicate)")
@@ -414,21 +453,24 @@ async def verify_face(
 
         if risk_assessment.decision == RiskDecision.MANUAL_REVIEW:
             customer_id = str(uuid.uuid4())
+            face_data_uri = f"data:image/jpeg;base64,{request.image}"
             face_metadata = {
                 "session_id": request.session_id,
                 "challenges": request.challenges_completed,
-                "spoof_score": spoof_score,
-                "deepfake_score": deepfake_score,
+                "spoof_score": round(spoof_score, 4),
+                "spoof_adjusted": round(adjusted_spoof_score, 4),
+                "deepfake_score": round(deepfake_score, 4),
                 "risk_score": risk_assessment.score,
+                "risk_level": risk_assessment.level.value,
+                "flags": risk_assessment.flags,
             }
             logger.info(f"[DECISION] PENDING_REVIEW (medium risk) — storing embedding, customer_id={customer_id}")
             await add_face_embedding(customer_id=customer_id, embedding=embedding,
-                                     db=db, metadata=face_metadata)
+                                     db=db, metadata=face_metadata, face_image=face_data_uri)
             logger.info(f"[DECISION] Embedding stored in customer_faces")
 
             await log_audit(db, request.session_id, "verify", "pending_review",
-                {"customer_id": customer_id, "risk_score": risk_assessment.score,
-                 "flags": risk_assessment.flags}, http_request)
+                {**full_telemetry, "customer_id": customer_id}, http_request)
 
             elapsed = time.time() - pipeline_start
             logger.info(f"[PIPELINE] Completed in {elapsed:.3f}s → PENDING_REVIEW (medium risk)")
@@ -444,24 +486,27 @@ async def verify_face(
 
         # AUTO APPROVE - low risk
         customer_id = str(uuid.uuid4())
+        face_data_uri = f"data:image/jpeg;base64,{request.image}"
         face_metadata = {
             "session_id": request.session_id,
             "challenges": request.challenges_completed,
-            "spoof_score": spoof_score,
-            "deepfake_score": deepfake_score,
+            "spoof_score": round(spoof_score, 4),
+            "spoof_adjusted": round(adjusted_spoof_score, 4),
+            "deepfake_score": round(deepfake_score, 4),
             "risk_score": risk_assessment.score,
+            "risk_level": risk_assessment.level.value,
+            "flags": risk_assessment.flags,
         }
         if request.motion_analysis:
             face_metadata["motion_liveness_score"] = request.motion_analysis.liveness_score
 
         logger.info(f"[DECISION] AUTO_APPROVE — risk={risk_assessment.score}, customer_id={customer_id}")
         await add_face_embedding(customer_id=customer_id, embedding=embedding,
-                                 db=db, metadata=face_metadata)
+                                 db=db, metadata=face_metadata, face_image=face_data_uri)
         logger.info(f"[DECISION] Embedding stored in customer_faces")
 
         await log_audit(db, request.session_id, "verify", "success",
-            {"customer_id": customer_id, "risk_score": risk_assessment.score,
-             "spoof_score": spoof_score, "deepfake_score": deepfake_score}, http_request)
+            {**full_telemetry, "customer_id": customer_id}, http_request)
 
         elapsed = time.time() - pipeline_start
         logger.info(f"[PIPELINE] Completed in {elapsed:.3f}s → SUCCESS (auto approved)")
@@ -496,12 +541,8 @@ async def submit_dispute(
     Submit a dispute when user claims they are real despite spoof detection.
     """
     try:
-        # Upload image for manual review
-        image_url = upload_image(
-            request.image,
-            folder="kyc/disputes",
-            public_id=f"dispute_{request.session_id}"
-        )
+        # Store image as data URI directly
+        image_url = f"data:image/jpeg;base64,{request.image}"
 
         # Store dispute record
         query = text("""
@@ -514,7 +555,7 @@ async def submit_dispute(
             query,
             {
                 "session_id": request.session_id,
-                "image_url": image_url or "upload_failed",
+                "image_url": image_url,
                 "reason": request.reason
             }
         )
@@ -547,7 +588,8 @@ async def create_review_entry(
     new_image_url: str,
     matched_customer_id: str,
     matched_customer_name: str,
-    similarity_score: float
+    similarity_score: float,
+    matched_face_image_url: str = None
 ) -> str:
     """Create an entry in the review queue"""
     query = text("""
@@ -557,6 +599,7 @@ async def create_review_entry(
             new_face_image_url,
             matched_customer_id,
             matched_customer_name,
+            matched_face_image_url,
             similarity_score
         )
         VALUES (
@@ -565,6 +608,7 @@ async def create_review_entry(
             :new_image_url,
             :matched_customer_id,
             :matched_customer_name,
+            :matched_face_image_url,
             :similarity_score
         )
         RETURNING id
@@ -578,6 +622,7 @@ async def create_review_entry(
             "new_image_url": new_image_url,
             "matched_customer_id": matched_customer_id,
             "matched_customer_name": matched_customer_name,
+            "matched_face_image_url": matched_face_image_url,
             "similarity_score": similarity_score
         }
     )

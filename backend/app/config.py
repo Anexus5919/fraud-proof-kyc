@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Thresholds
     spoof_threshold: float = 0.55  # Stricter threshold for anti-spoofing
-    duplicate_threshold: float = 0.4  # Cosine distance threshold
+    duplicate_threshold: float = 0.55  # Cosine distance threshold (catches same person with slight pose changes)
 
     class Config:
         env_file = str(_ENV_FILE)

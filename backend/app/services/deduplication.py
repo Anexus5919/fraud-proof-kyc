@@ -94,7 +94,8 @@ async def add_face_embedding(
     embedding: np.ndarray,
     db: AsyncSession,
     customer_name: Optional[str] = None,
-    metadata: Optional[dict] = None
+    metadata: Optional[dict] = None,
+    face_image: Optional[str] = None
 ) -> str:
     """
     Add a new face embedding to the database.
@@ -105,18 +106,19 @@ async def add_face_embedding(
         db: Database session
         customer_name: Optional customer name
         metadata: Optional metadata dict
+        face_image: Optional base64 data URI of the face image
 
     Returns:
         ID of the inserted record
     """
-    logger.info(f"[DEDUP] Storing embedding — customer_id={customer_id}, name={customer_name}")
+    logger.info(f"[DEDUP] Storing embedding — customer_id={customer_id}, name={customer_name}, has_image={face_image is not None}")
 
     embedding_str = '[' + ','.join(map(str, embedding.tolist())) + ']'
     metadata_str = json.dumps(metadata or {}, default=str)
 
     query = text("""
-        INSERT INTO customer_faces (customer_id, customer_name, embedding, metadata)
-        VALUES (:customer_id, :customer_name, CAST(:embedding AS vector), CAST(:metadata AS jsonb))
+        INSERT INTO customer_faces (customer_id, customer_name, embedding, metadata, face_image)
+        VALUES (:customer_id, :customer_name, CAST(:embedding AS vector), CAST(:metadata AS jsonb), :face_image)
         RETURNING id
     """)
 
@@ -126,7 +128,8 @@ async def add_face_embedding(
             "customer_id": customer_id,
             "customer_name": customer_name,
             "embedding": embedding_str,
-            "metadata": metadata_str
+            "metadata": metadata_str,
+            "face_image": face_image
         }
     )
 

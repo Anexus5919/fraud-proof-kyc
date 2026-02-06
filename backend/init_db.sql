@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS customer_faces (
     customer_id VARCHAR(255) NOT NULL UNIQUE,
     customer_name VARCHAR(255),
     embedding vector(512) NOT NULL,
+    face_image TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     status VARCHAR(50) DEFAULT 'active',
     metadata JSONB DEFAULT '{}'

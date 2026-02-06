@@ -11,6 +11,7 @@ export const STATES = {
   CHALLENGE_1: 'challenge_1',
   CHALLENGE_2: 'challenge_2',
   CHALLENGE_3: 'challenge_3',
+  READY_TO_CAPTURE: 'ready_to_capture',
   CAPTURING: 'capturing',
   PROCESSING: 'processing',
   SUCCESS: 'success',
@@ -25,6 +26,7 @@ const ACTIONS = {
   INITIALIZED: 'INITIALIZED',
   QUALITY_PASSED: 'QUALITY_PASSED',
   CHALLENGE_PASSED: 'CHALLENGE_PASSED',
+  CAPTURE_CONFIRMED: 'CAPTURE_CONFIRMED',
   CAPTURE_COMPLETE: 'CAPTURE_COMPLETE',
   VERIFY_SUCCESS: 'VERIFY_SUCCESS',
   VERIFY_FAILURE: 'VERIFY_FAILURE',
@@ -88,10 +90,10 @@ function livenessReducer(state, action) {
       const nextIndex = state.currentChallengeIndex + 1;
 
       if (nextIndex >= state.challenges.length) {
-        // All challenges completed
+        // All challenges completed → go to capture stage (user must confirm)
         return {
           ...state,
-          currentState: STATES.CAPTURING,
+          currentState: STATES.READY_TO_CAPTURE,
           completedChallenges: newCompletedChallenges,
           holdFrameCount: 0,
         };
@@ -111,6 +113,16 @@ function livenessReducer(state, action) {
         holdFrameCount: 0,
       };
     }
+
+    case ACTIONS.CAPTURE_CONFIRMED:
+      // Security: only allow capture if all challenges were completed
+      if (state.completedChallenges.length < state.challenges.length) {
+        return state;
+      }
+      return {
+        ...state,
+        currentState: STATES.CAPTURING,
+      };
 
     case ACTIONS.CAPTURE_COMPLETE:
       return {
@@ -226,6 +238,11 @@ export function useLivenessState() {
     dispatch({ type: ACTIONS.CHALLENGE_PASSED });
   }, []);
 
+  // Called when user confirms capture (spacebar press with quality checks passing)
+  const onCaptureConfirmed = useCallback(() => {
+    dispatch({ type: ACTIONS.CAPTURE_CONFIRMED });
+  }, []);
+
   // Called when frame is captured
   const onCaptureComplete = useCallback((imageData) => {
     dispatch({ type: ACTIONS.CAPTURE_COMPLETE, payload: imageData });
@@ -286,6 +303,7 @@ export function useLivenessState() {
     onQualityPassed,
     checkChallenge,
     onChallengePassed,
+    onCaptureConfirmed,
     onCaptureComplete,
     onVerifySuccess,
     onVerifyFailure,

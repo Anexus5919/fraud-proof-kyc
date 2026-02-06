@@ -200,6 +200,11 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload  # Development
 ```
 
+## Git Commit Rules
+
+- **NEVER** include "Co-Authored-By" or "Co-authored-by" lines in any commit message
+- Keep commit messages concise and descriptive using conventional commit format
+
 ## Testing Checklist
 
 - [ ] Camera permissions work

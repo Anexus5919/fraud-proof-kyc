@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useCamera } from '../hooks/useCamera';
 import { useFaceLandmarker } from '../hooks/useFaceLandmarker';
 import { useLivenessState, STATES } from '../hooks/useLivenessState';
-import { runAllQualityChecks } from '../lib/qualityChecks';
+import { runAllQualityChecks, runCaptureQualityChecks } from '../lib/qualityChecks';
 import { getMotionAnalyzer, resetMotionAnalyzer } from '../lib/motionAnalyzer';
 import { verifyFace, submitDispute, canvasToBase64 } from '../api/verify';
 import CameraFeed from './CameraFeed';
@@ -35,6 +35,7 @@ function LivenessCheck() {
     onQualityPassed,
     checkChallenge,
     onChallengePassed,
+    onCaptureConfirmed,
     onCaptureComplete,
     onVerifySuccess,
     onVerifyFailure,
@@ -52,8 +53,10 @@ function LivenessCheck() {
   const isProcessingRef = useRef(false); // Synchronous guard — prevents duplicate API calls across animation frames
 
   const [qualityResults, setQualityResults] = useState(null);
+  const [captureQualityResults, setCaptureQualityResults] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false); // Async state for UI rendering only
   const [qualityPassed, setQualityPassed] = useState(false); // Tracks if user can start challenges
+  const [captureReady, setCaptureReady] = useState(false); // Tracks if capture quality checks pass
 
   // Set canvas ref callback
   const setCanvasRef = useCallback((node) => {
@@ -104,6 +107,17 @@ function LivenessCheck() {
         }
       }
 
+      // Ready-to-capture phase — run stricter quality checks (frontal face required)
+      if (state.currentState === STATES.READY_TO_CAPTURE) {
+        const captureQuality = runCaptureQualityChecks(
+          results,
+          videoRef.current,
+          canvasRef.current
+        );
+        setCaptureQualityResults(captureQuality);
+        setCaptureReady(captureQuality.allPassed);
+      }
+
       // Capturing phase — use ref for synchronous check to prevent duplicate calls
       if (state.currentState === STATES.CAPTURING && !isProcessingRef.current) {
         handleCapture();
@@ -134,6 +148,19 @@ function LivenessCheck() {
     console.log('%c[KYC] Starting capture & verification...', 'color: #2563eb; font-weight: bold');
     console.log('[KYC] Session:', state.sessionId);
     console.log('[KYC] Challenges completed:', state.completedChallenges);
+
+    // Security: verify challenges were actually completed
+    if (state.completedChallenges.length < 3) {
+      console.error('[KYC] SECURITY: Capture attempted without completing all challenges!');
+      onVerifyFailure({
+        status: 'error',
+        message: 'Verification integrity error. Please restart.',
+        canDispute: false,
+      });
+      isProcessingRef.current = false;
+      setIsProcessing(false);
+      return;
+    }
 
     try {
       // Analyze motion data for anti-spoofing
@@ -220,6 +247,29 @@ function LivenessCheck() {
     onVerifyFailure,
   ]);
 
+  // Handle spacebar press for capture confirmation
+  const handleCaptureConfirm = useCallback(() => {
+    if (captureReady && state.currentState === STATES.READY_TO_CAPTURE) {
+      console.log('%c[KYC] Capture confirmed by user (spacebar)', 'color: #2563eb; font-weight: bold');
+      onCaptureConfirmed();
+    }
+  }, [captureReady, state.currentState, onCaptureConfirmed]);
+
+  // Listen for spacebar during READY_TO_CAPTURE state
+  useEffect(() => {
+    if (state.currentState !== STATES.READY_TO_CAPTURE) return;
+
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        handleCaptureConfirm();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.currentState, handleCaptureConfirm]);
+
   // Handle dispute submission
   const handleDispute = useCallback(async () => {
     try {
@@ -253,6 +303,8 @@ function LivenessCheck() {
     setIsProcessing(false);
     setQualityPassed(false);
     setQualityResults(null);
+    setCaptureQualityResults(null);
+    setCaptureReady(false);
     resetMotionAnalyzer(); // Reset motion tracking
     reset();
     start();
@@ -469,6 +521,70 @@ function LivenessCheck() {
               // Timeout handled by challenge component
             }}
           />
+        )}
+
+        {/* Ready to capture — user must look at camera and press spacebar */}
+        {state.currentState === STATES.READY_TO_CAPTURE && (
+          <div className="text-center">
+            <div className="mb-4">
+              <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                captureReady ? 'bg-green-100' : 'bg-amber-100'
+              }`}>
+                <svg className={`w-8 h-8 ${captureReady ? 'text-green-600' : 'text-amber-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                Challenges Complete
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Now look directly at the camera for your verification photo.
+              </p>
+            </div>
+
+            {/* Capture quality checks */}
+            {captureQualityResults && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="space-y-1.5">
+                  {captureQualityResults.checks.map((check) => (
+                    <div key={check.name} className="flex items-center gap-2 text-xs">
+                      {check.passed ? (
+                        <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
+                        </svg>
+                      )}
+                      <span className={check.passed ? 'text-gray-600' : 'text-amber-700'}>
+                        {check.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Capture button + spacebar hint */}
+            <button
+              onClick={handleCaptureConfirm}
+              disabled={!captureReady}
+              className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                captureReady
+                  ? 'bg-gray-900 text-white hover:bg-gray-800'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {captureReady ? 'Capture Photo' : 'Please look directly at the camera'}
+            </button>
+            {captureReady && (
+              <p className="text-xs text-gray-400 mt-2">
+                or press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">Space</kbd> to capture
+              </p>
+            )}
+          </div>
         )}
 
         {/* Capturing */}

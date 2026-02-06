@@ -256,29 +256,43 @@ class DeepfakeDetector:
                     f"high={freq_details.get('high_frequency_energy')}, "
                     f"smooth={freq_details.get('profile_smoothness')})")
 
-        # Combine scores
+        # Combine scores with conflict resolution
+        # ViT model has high false-positive rate on webcam-quality images:
+        # JPEG/WebRTC compression artifacts look like GAN artifacts to the model.
+        # When ML says "fake" but frequency says "real", trust frequency.
         if ml_score is not None:
-            final_score = 0.80 * ml_score + 0.20 * freq_score
-            details["method"] = "ml_model + frequency_analysis"
-            details["weights"] = {"ml_model": 0.80, "frequency_analysis": 0.20}
-            logger.info(f"[DEEPFAKE] Combined: 0.80*{ml_score:.4f} + 0.20*{freq_score:.4f} = {final_score:.4f}")
+            if ml_score < 0.20 and freq_score >= 0.30:
+                # ML model likely seeing compression artifacts as deepfake.
+                # Frequency analysis disagrees — trust frequency for webcam images.
+                final_score = freq_score
+                details["method"] = "frequency_analysis (ml_overridden)"
+                details["weights"] = {"ml_model": 0.0, "frequency_analysis": 1.0}
+                details["ml_override_reason"] = "ML score very low but frequency normal — likely webcam compression false positive"
+                logger.info(f"[DEEPFAKE] ML override: ml={ml_score:.4f} < 0.20 but freq={freq_score:.4f} >= 0.30 → using freq only = {final_score:.4f}")
+            else:
+                final_score = 0.40 * ml_score + 0.60 * freq_score
+                details["method"] = "ml_model + frequency_analysis"
+                details["weights"] = {"ml_model": 0.40, "frequency_analysis": 0.60}
+                logger.info(f"[DEEPFAKE] Combined: 0.40*{ml_score:.4f} + 0.60*{freq_score:.4f} = {final_score:.4f}")
         else:
             final_score = freq_score
             details["method"] = "frequency_analysis_only (model unavailable)"
             details["weights"] = {"frequency_analysis": 1.0}
             logger.warning("[DEEPFAKE] Using frequency-only fallback (model unavailable)")
 
-        # Critical flags
+        # Critical flags — only trigger on extreme cases where BOTH signals agree
+        # The ML model has known false positives on webcam images, so require
+        # both ML AND frequency to indicate fake before clamping
         critical_flag = None
-        if ml_score is not None and ml_score < 0.2:
+        if ml_score is not None and ml_score < 0.1 and freq_score < 0.3:
             critical_flag = "high_confidence_deepfake"
-            final_score = min(final_score, 0.25)
-            logger.warning(f"[DEEPFAKE] CRITICAL: high_confidence_deepfake (ml={ml_score:.4f} < 0.2)")
-        elif freq_score < 0.25:
+            final_score = min(final_score, 0.20)
+            logger.warning(f"[DEEPFAKE] CRITICAL: high_confidence_deepfake (ml={ml_score:.4f} < 0.1 AND freq={freq_score:.4f} < 0.3)")
+        elif freq_score < 0.2:
             critical_flag = "gan_frequency_signature"
             if ml_score is None:
-                final_score = min(final_score, 0.35)
-            logger.warning(f"[DEEPFAKE] CRITICAL: gan_frequency_signature (freq={freq_score:.4f} < 0.25)")
+                final_score = min(final_score, 0.30)
+            logger.warning(f"[DEEPFAKE] CRITICAL: gan_frequency_signature (freq={freq_score:.4f} < 0.2)")
 
         if critical_flag:
             details["critical_flag"] = critical_flag

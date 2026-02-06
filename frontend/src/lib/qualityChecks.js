@@ -175,6 +175,40 @@ export function checkLighting(videoElement, canvasElement) {
   }
 }
 
+// Check if face is roughly frontal (not turned to the side)
+// Uses nose position relative to eyes — if nose is equidistant from both eyes, face is frontal
+export function checkFaceFrontal(results) {
+  if (!results?.faceLandmarks?.[0]) {
+    return { passed: false, message: 'No face detected' };
+  }
+
+  const landmarks = results.faceLandmarks[0];
+  // MediaPipe landmark indices: 1=nose tip, 33=left eye inner, 263=right eye inner
+  const nose = landmarks[1];
+  const leftEye = landmarks[33];
+  const rightEye = landmarks[263];
+
+  if (!nose || !leftEye || !rightEye) {
+    return { passed: true, message: 'Cannot determine face angle' };
+  }
+
+  const distToLeft = Math.abs(nose.x - leftEye.x);
+  const distToRight = Math.abs(nose.x - rightEye.x);
+
+  // Ratio of distances — 1.0 = perfectly frontal
+  const ratio = Math.min(distToLeft, distToRight) / Math.max(distToLeft, distToRight);
+
+  // Require ratio > 0.5 for roughly frontal (allows slight tilt)
+  const passed = ratio > 0.5;
+
+  return {
+    passed,
+    message: passed
+      ? 'Face is facing forward'
+      : 'Please look directly at the camera',
+  };
+}
+
 // Run all quality checks
 export function runAllQualityChecks(results, videoElement, canvasElement) {
   const checks = [
@@ -183,6 +217,28 @@ export function runAllQualityChecks(results, videoElement, canvasElement) {
     { name: 'faceCentered', ...checkFaceCentered(results) },
     { name: 'eyesVisible', ...checkEyesVisible(results) },
     { name: 'noMask', ...checkNoMask(results) },
+    { name: 'lighting', ...checkLighting(videoElement, canvasElement) },
+  ];
+
+  const allPassed = checks.every((check) => check.passed);
+  const failedChecks = checks.filter((check) => !check.passed);
+
+  return {
+    allPassed,
+    checks,
+    failedChecks,
+    primaryMessage: failedChecks[0]?.message || 'All checks passed',
+  };
+}
+
+// Run capture-stage quality checks (stricter — requires frontal face)
+export function runCaptureQualityChecks(results, videoElement, canvasElement) {
+  const checks = [
+    { name: 'faceDetected', ...checkFaceDetected(results) },
+    { name: 'singleFace', ...checkSingleFace(results) },
+    { name: 'faceCentered', ...checkFaceCentered(results) },
+    { name: 'faceFrontal', ...checkFaceFrontal(results) },
+    { name: 'eyesVisible', ...checkEyesVisible(results) },
     { name: 'lighting', ...checkLighting(videoElement, canvasElement) },
   ];
 

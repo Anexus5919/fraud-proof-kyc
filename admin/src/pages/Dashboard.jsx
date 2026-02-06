@@ -3,7 +3,7 @@ import { getStats, getReviews } from '../api/admin';
 import StatsCard from '../components/StatsCard';
 import ReviewCard from '../components/ReviewCard';
 
-function Dashboard() {
+function Dashboard({ onNavigate }) {
   const [stats, setStats] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,25 +46,27 @@ function Dashboard() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">KYC Admin Dashboard</h1>
-        <p className="text-gray-500">Review flagged registrations and disputes</p>
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="text-gray-500">Overview of KYC verification activity</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatsCard
-          title="Total Customers"
-          value={stats?.total_customers || 0}
-          color="blue"
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          }
-        />
+        <div onClick={() => onNavigate?.('customers')} className="cursor-pointer">
+          <StatsCard
+            title="Total Customers"
+            value={stats?.total_customers || 0}
+            color="blue"
+            icon={
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            }
+          />
+        </div>
         <StatsCard
           title="Pending Reviews"
           value={stats?.pending_reviews || 0}
@@ -85,16 +87,18 @@ function Dashboard() {
             </svg>
           }
         />
-        <StatsCard
-          title="Today's Verifications"
-          value={stats?.today_verifications || 0}
-          color="green"
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
+        <div onClick={() => onNavigate?.('verifications')} className="cursor-pointer">
+          <StatsCard
+            title="Today's Verifications"
+            value={stats?.today_verifications || 0}
+            color="green"
+            icon={
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          />
+        </div>
       </div>
 
       {/* Reviews section */}

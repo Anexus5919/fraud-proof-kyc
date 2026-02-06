@@ -49,3 +49,26 @@ export async function getDisputes(status = 'pending') {
   if (!response.ok) throw new Error('Failed to fetch disputes');
   return response.json();
 }
+
+// List customers
+export async function getCustomers(status = 'active') {
+  const params = status ? `?status=${status}` : '';
+  const response = await fetch(`${API_URL}/api/admin/customers${params}`);
+  if (!response.ok) throw new Error('Failed to fetch customers');
+  return response.json();
+}
+
+// Get single customer detail
+export async function getCustomer(customerId) {
+  const response = await fetch(`${API_URL}/api/admin/customers/${customerId}`);
+  if (!response.ok) throw new Error('Failed to fetch customer');
+  return response.json();
+}
+
+// List verifications
+export async function getVerifications(resultFilter = null) {
+  const params = resultFilter ? `?result=${resultFilter}` : '';
+  const response = await fetch(`${API_URL}/api/admin/verifications${params}`);
+  if (!response.ok) throw new Error('Failed to fetch verifications');
+  return response.json();
+}
