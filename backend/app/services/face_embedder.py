@@ -17,7 +17,11 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Model paths — buffalo_l pack from InsightFace
-MODEL_DIR = Path.home() / '.insightface' / 'models'
+# InsightFace's FaceAnalysis downloads to buffalo_l/ subdirectory;
+# check that first, then flat path for manual installations
+_BASE_MODEL_DIR = Path.home() / '.insightface' / 'models'
+_BUFFALO_DIR = _BASE_MODEL_DIR / 'buffalo_l'
+MODEL_DIR = _BUFFALO_DIR if (_BUFFALO_DIR / 'det_10g.onnx').exists() else _BASE_MODEL_DIR
 DET_MODEL_PATH = MODEL_DIR / 'det_10g.onnx'
 REC_MODEL_PATH = MODEL_DIR / 'w600k_r50.onnx'
 
@@ -312,17 +316,19 @@ class OnnxFaceAnalyzer:
         self._load()
 
     def _load(self):
+        logger.info(f"[ONNX] Model directory resolved to: {MODEL_DIR}")
+        logger.info(f"[ONNX] Detection model: {DET_MODEL_PATH} (exists={DET_MODEL_PATH.exists()})")
+        logger.info(f"[ONNX] Recognition model: {REC_MODEL_PATH} (exists={REC_MODEL_PATH.exists()})")
+
         if not DET_MODEL_PATH.exists():
             raise FileNotFoundError(
                 f"SCRFD detection model not found at {DET_MODEL_PATH}. "
-                f"Download buffalo_l pack from InsightFace and place .onnx files "
-                f"in {MODEL_DIR}/"
+                f"Checked: {_BUFFALO_DIR}, {_BASE_MODEL_DIR}"
             )
         if not REC_MODEL_PATH.exists():
             raise FileNotFoundError(
                 f"ArcFace recognition model not found at {REC_MODEL_PATH}. "
-                f"Download buffalo_l pack from InsightFace and place .onnx files "
-                f"in {MODEL_DIR}/"
+                f"Checked: {_BUFFALO_DIR}, {_BASE_MODEL_DIR}"
             )
 
         self.detector = SCRFDDetector(str(DET_MODEL_PATH))
