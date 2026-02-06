@@ -1,0 +1,26 @@
+# Web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# Database
+sqlalchemy>=2.0.25
+asyncpg>=0.29.0
+pgvector>=0.2.4
+
+# ML and image processing
+numpy>=1.26.0
+opencv-python-headless>=4.9.0
+pillow>=10.2.0
+onnxruntime>=1.17.0
+
+# InsightFace for face embedding
+insightface>=0.7.3
+
+# Cloudinary for image storage
+cloudinary>=1.38.0
+
+# Utilities
+python-dotenv>=1.0.1
+pydantic>=2.6.0
+pydantic-settings>=2.1.0

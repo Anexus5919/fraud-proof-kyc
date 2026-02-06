@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+env/
+*.egg-info/
+.eggs/
+
+# Environment
+.env
+.env.local
+
+# ML Models (large files - download separately)
+ml_models/silent_face/*.pth
+ml_models/silent_face/*.onnx
+ml_models/silent_face/*.onnx.data
+ml_models/silent_face/*.zip
+ml_models/silent_face/src/
+ml_models/silent_face/Silent-Face-Anti-Spoofing-master/
+ml_models/temp/
+
+# InsightFace models (downloaded automatically)
+# These are stored in ~/.insightface, not in repo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Misc
+.DS_Store
+*.bak
