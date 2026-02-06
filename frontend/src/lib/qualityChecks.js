@@ -175,6 +175,68 @@ export function checkLighting(videoElement, canvasElement) {
   }
 }
 
+// Check for natural face motion (anti-spoofing for printed photos and screens).
+// This is a multi-step temporal check — it collects landmark positions over ~15 frames
+// (~0.5 seconds at 30fps) and analyzes the motion pattern:
+//
+// 1. Micro-movement: Real faces have involuntary micro-movements (breathing, saccades).
+//    Printed photos held still have zero micro-movement → "suspiciously_still"
+//
+// 2. Parallel motion: When a photo/phone is moved, ALL landmarks move in perfect parallel.
+//    Real faces have independent landmark motion (eyes blink, mouth twitches independently).
+//    High correlation between landmarks → "parallel_motion_detected"
+//
+// 3. Motion variance: Different face regions have different variance (eyes more active than
+//    forehead). Photos have uniform variance across all landmarks.
+//
+// This is far more reliable than single-frame pixel analysis because it measures a physical
+// property (independent facial motion) that printed photos fundamentally cannot produce.
+export function checkMotionLiveness(motionAnalyzer) {
+  if (!motionAnalyzer) {
+    return { passed: true, message: 'Motion check not available' };
+  }
+
+  const analysis = motionAnalyzer.analyze();
+
+  if (!analysis.ready) {
+    return {
+      passed: false,
+      message: `Analyzing face motion... (${analysis.framesCollected}/${analysis.framesNeeded})`,
+    };
+  }
+
+  const flags = analysis.flags || [];
+
+  // Suspiciously still = likely a photo on a stand or held very steady
+  if (flags.includes('suspiciously_still')) {
+    return {
+      passed: false,
+      message: 'No natural face movement detected — use a live camera, not a photo',
+    };
+  }
+
+  // Parallel motion = all landmarks moving together as one rigid body (photo/phone being moved)
+  if (flags.includes('parallel_motion_detected')) {
+    return {
+      passed: false,
+      message: 'Unnatural motion pattern — ensure you are not using a photo or screen',
+    };
+  }
+
+  // Overall liveness score too low (combination of weak signals)
+  if (analysis.livenessScore < 0.4) {
+    return {
+      passed: false,
+      message: 'Face motion appears unnatural — please use a live camera',
+    };
+  }
+
+  return {
+    passed: true,
+    message: 'Natural face motion verified',
+  };
+}
+
 // Check if face is roughly frontal (not turned to the side)
 // Uses nose position relative to eyes — if nose is equidistant from both eyes, face is frontal
 export function checkFaceFrontal(results) {
@@ -209,12 +271,26 @@ export function checkFaceFrontal(results) {
   };
 }
 
+// Check that natural blinks have been detected during the evaluation window.
+// Printed photos and static images CANNOT blink — this is the strongest anti-print signal.
+// blinkCount is tracked externally (in the detection loop) via blendshapes.
+// Requires 2 blinks (normal rate ~15-20/min → 2 in 10s is easy for real person, impossible for paper).
+// blinkCount resets whenever the evaluation timer resets, so blinks must occur during the passing window.
+export function checkBlinkDetected(blinkCount) {
+  if (blinkCount >= 2) {
+    return { passed: true, hidden: true };
+  }
+  return { passed: false, hidden: true };
+}
+
 // Run all quality checks
-export function runAllQualityChecks(results, videoElement, canvasElement) {
+export function runAllQualityChecks(results, videoElement, canvasElement, motionAnalyzer, blinkCount = 0) {
   const checks = [
     { name: 'faceDetected', ...checkFaceDetected(results) },
     { name: 'singleFace', ...checkSingleFace(results) },
     { name: 'faceCentered', ...checkFaceCentered(results) },
+    { name: 'motionLiveness', ...checkMotionLiveness(motionAnalyzer) },
+    { name: 'blinkDetected', ...checkBlinkDetected(blinkCount) },
     { name: 'eyesVisible', ...checkEyesVisible(results) },
     { name: 'noMask', ...checkNoMask(results) },
     { name: 'lighting', ...checkLighting(videoElement, canvasElement) },
@@ -222,16 +298,18 @@ export function runAllQualityChecks(results, videoElement, canvasElement) {
 
   const allPassed = checks.every((check) => check.passed);
   const failedChecks = checks.filter((check) => !check.passed);
+  const visibleFailed = failedChecks.filter((check) => !check.hidden);
 
   return {
     allPassed,
     checks,
     failedChecks,
-    primaryMessage: failedChecks[0]?.message || 'All checks passed',
+    primaryMessage: visibleFailed[0]?.message || 'All checks passed',
   };
 }
 
 // Run capture-stage quality checks (stricter — requires frontal face)
+// Motion liveness was already verified during quality check stage, no need to re-check
 export function runCaptureQualityChecks(results, videoElement, canvasElement) {
   const checks = [
     { name: 'faceDetected', ...checkFaceDetected(results) },

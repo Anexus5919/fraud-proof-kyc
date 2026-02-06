@@ -14,7 +14,7 @@ const CONFIG = {
   FRAME_HISTORY: 30,           // Number of frames to analyze
   MIN_FRAMES_FOR_ANALYSIS: 15, // Minimum frames needed
   MICRO_MOVEMENT_THRESHOLD: 0.001, // Minimum expected micro-movement
-  PARALLEL_MOTION_THRESHOLD: 0.85, // Correlation threshold for detecting parallel motion
+  PARALLEL_MOTION_THRESHOLD: 0.80, // Correlation threshold for detecting parallel motion
   STILLNESS_THRESHOLD: 0.0005,     // Below this is suspiciously still
 };
 
