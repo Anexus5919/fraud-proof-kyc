@@ -8,17 +8,22 @@ export function canvasToBase64(canvas) {
 }
 
 // Submit face for verification
-export async function verifyFace({ image, sessionId, challengesCompleted }) {
+export async function verifyFace({ image, sessionId, challengesCompleted, motionAnalysis }) {
+  const body = {
+    image,
+    session_id: sessionId,
+    challenges_completed: challengesCompleted,
+  };
+  if (motionAnalysis) {
+    body.motionAnalysis = motionAnalysis;
+  }
+
   const response = await fetch(`${API_URL}/api/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      image,
-      session_id: sessionId,
-      challenges_completed: challengesCompleted,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

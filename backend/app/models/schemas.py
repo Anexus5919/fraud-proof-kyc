@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
@@ -29,12 +29,29 @@ class VerifyRequest(BaseModel):
 
 
 class VerifyResponse(BaseModel):
-    status: str = Field(..., description="success, spoof_detected, duplicate_found, error")
+    """
+    5-Layer Verification Response
+
+    Statuses:
+    - success: Auto approved (risk 0-30)
+    - pending_review: Sent to manual review (risk 31-60)
+    - rejected: Auto rejected (risk 61-100)
+    - spoof_detected: Layer 2 failure
+    - deepfake_detected: Layer 3 failure
+    - duplicate_found: Layer 4 flagged
+    - error: Processing error
+    """
+    status: str = Field(..., description="Verification result status")
     message: Optional[str] = None
     customer_id: Optional[str] = None
     confidence: Optional[float] = None
     can_dispute: bool = False
     review_id: Optional[str] = None
+
+    # 5-Layer System Results
+    risk_score: Optional[int] = Field(None, description="Risk score 0-100")
+    risk_level: Optional[str] = Field(None, description="Risk level: low, medium, high")
+    layer_results: Optional[Dict[str, Any]] = Field(None, description="Individual layer results")
 
 
 # Dispute request/response

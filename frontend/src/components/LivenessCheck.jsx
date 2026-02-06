@@ -167,9 +167,10 @@ function LivenessCheck() {
 
       if (result.status === 'success') {
         onVerifySuccess(result);
-      } else if (result.status === 'duplicate_found' || result.status === 'flagged') {
+      } else if (result.status === 'duplicate_found' || result.status === 'flagged' || result.status === 'pending_review') {
         onVerifyFlagged(result);
       } else {
+        // Handle spoof_detected, deepfake_detected, rejected, error
         onVerifyFailure(result);
       }
     } catch (error) {
@@ -379,6 +380,9 @@ function LivenessCheck() {
           onDispute={handleDispute}
           canDispute={state.verificationResult?.canDispute}
           disputeSubmitted={state.verificationResult?.disputeSubmitted}
+          riskScore={state.verificationResult?.risk_score}
+          riskLevel={state.verificationResult?.risk_level}
+          layerResults={state.verificationResult?.layer_results}
         />
       </div>
     );

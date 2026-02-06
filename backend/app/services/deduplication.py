@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,7 +94,7 @@ async def add_face_embedding(
         ID of the inserted record
     """
     embedding_str = '[' + ','.join(map(str, embedding.tolist())) + ']'
-    metadata_str = str(metadata or {}).replace("'", '"')  # JSON needs double quotes
+    metadata_str = json.dumps(metadata or {}, default=str)
 
     query = text("""
         INSERT INTO customer_faces (customer_id, customer_name, embedding, metadata)
