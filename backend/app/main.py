@@ -60,33 +60,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Request/Response logging middleware
-import time as _time
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request as StarletteRequest
-
-
-class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: StarletteRequest, call_next):
-        start = _time.time()
-        logger.info(f"[HTTP] --> {request.method} {request.url.path} (from {request.client.host if request.client else '?'})")
-        response = await call_next(request)
-        elapsed = _time.time() - start
-        logger.info(f"[HTTP] <-- {request.method} {request.url.path} → {response.status_code} ({elapsed:.3f}s)")
-        return response
-
-
-# Middleware order matters: last added = outermost (processes first)
-# 1. Logging middleware (inner)
-app.add_middleware(RequestLoggingMiddleware)
-
-# 2. CORS middleware (outer — must be outermost to handle preflight OPTIONS)
+# CORS — allow all origins (no cookie auth needed for this API)
+# No BaseHTTPMiddleware — it's known to break CORS in Starlette
 origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-logger.info(f"[CORS] Allowed origins: {origins}")
+logger.info(f"[CORS] Configured origins: {origins}")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -113,4 +94,14 @@ async def health():
         "status": "healthy",
         "database": "connected",  # TODO: Add actual DB check
         "ml_models": "loaded"  # TODO: Add actual model check
+    }
+
+
+@app.get("/debug/cors")
+async def debug_cors():
+    """Debug CORS config"""
+    return {
+        "cors_origins_env": settings.cors_origins,
+        "parsed_origins": [o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+        "mode": "allow_all_wildcard",
     }
