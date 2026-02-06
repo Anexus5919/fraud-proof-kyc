@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.local
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.egg-info/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sw?
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ML models (large files)
+*.pth
+*.onnx
+*.onnx.data
+*.pt
+*.pkl
+*.h5
+
+# Model downloads
+backend/ml_models/silent_face/*.zip
+
+# Downloaded model directories
+backend/ml_models/silent_face/src/
+backend/ml_models/silent_face/Silent-Face-Anti-Spoofing-master/
+backend/ml_models/temp/
+
+# Test and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Misc
+*.bak
+*.tmp
+.cache/
