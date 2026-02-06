@@ -15,9 +15,12 @@ RUN pip install --no-cache-dir cython numpy
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Download InsightFace buffalo_l model pack during build (not at runtime)
+RUN python -c "from insightface.app import FaceAnalysis; fa = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider']); fa.prepare(ctx_id=-1)"
+
 # Copy app code
 COPY . .
 
-EXPOSE 8000
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway sets PORT dynamically — must not hardcode
+ENV PORT=8000
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
