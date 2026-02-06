@@ -158,6 +158,7 @@ class SpoofDetector:
             Tuple of (spoof_score, details)
             spoof_score: 0-1, higher = more likely to be real
         """
+        logger.info(f"[SPOOF] Starting detection — image={image.shape}, bbox={face_bbox}")
         details = {}
         scores = []
         weights = []
@@ -174,15 +175,19 @@ class SpoofDetector:
             x2 = min(w, x2 + pad_x)
             y2 = min(h, y2 + pad_y)
             face_region = image[y1:y2, x1:x2]
+            logger.info(f"[SPOOF] Face region extracted: {face_region.shape} (padded bbox)")
         else:
             h, w = image.shape[:2]
             face_region = image[h//6:5*h//6, w//6:5*w//6]
+            logger.info(f"[SPOOF] No bbox — using center crop: {face_region.shape}")
 
         if face_region.size == 0:
+            logger.warning("[SPOOF] Empty face region — returning 0.0")
             return 0.0, {'error': 'Invalid face region'}
 
         # Ensure minimum size for analysis
         if face_region.shape[0] < 50 or face_region.shape[1] < 50:
+            logger.warning(f"[SPOOF] Face too small: {face_region.shape} — returning 0.3")
             return 0.3, {'error': 'Face region too small for reliable analysis'}
 
         # 1. Deep learning detection (highest weight if available)
@@ -193,42 +198,80 @@ class SpoofDetector:
                 details['dl_score'] = dl_score
                 scores.append(dl_score)
                 weights.append(0.40)  # 40% weight
+                logger.info(f"[SPOOF]  1. DL model      : {dl_score:.4f} (weight=0.40)")
+            else:
+                logger.info(f"[SPOOF]  1. DL model      : FAILED ({dl_details})")
+        else:
+            logger.info("[SPOOF]  1. DL model      : NOT LOADED")
 
+        # Each sub-detector is wrapped in try/except so one failure doesn't crash the pipeline
         # 2. Moiré pattern detection (screens produce moiré)
-        moire_score, moire_details = self._detect_moire_pattern(face_region)
+        try:
+            moire_score, moire_details = self._detect_moire_pattern(face_region)
+        except Exception as e:
+            logger.warning(f"Moiré detection failed: {e}")
+            moire_score, moire_details = 0.5, {'error': str(e)}
         details['moire'] = moire_details
         scores.append(moire_score)
-        weights.append(0.20 if self.model_loaded else 0.25)
+        moire_w = 0.15 if self.model_loaded else 0.10
+        weights.append(moire_w)
+        logger.info(f"[SPOOF]  2. Moiré         : {moire_score:.4f} (weight={moire_w})")
 
         # 3. Texture analysis (LBP-based)
-        texture_score, texture_details = self._analyze_texture(face_region)
+        try:
+            texture_score, texture_details = self._analyze_texture(face_region)
+        except Exception as e:
+            logger.warning(f"Texture analysis failed: {e}")
+            texture_score, texture_details = 0.5, {'error': str(e)}
         details['texture'] = texture_details
         scores.append(texture_score)
-        weights.append(0.15 if self.model_loaded else 0.25)
+        texture_w = 0.15 if self.model_loaded else 0.30
+        weights.append(texture_w)
+        logger.info(f"[SPOOF]  3. Texture       : {texture_score:.4f} (weight={texture_w})")
 
         # 4. Color space analysis
-        color_score, color_details = self._analyze_color_space(face_region)
+        try:
+            color_score, color_details = self._analyze_color_space(face_region)
+        except Exception as e:
+            logger.warning(f"Color analysis failed: {e}")
+            color_score, color_details = 0.5, {'error': str(e)}
         details['color'] = color_details
         scores.append(color_score)
-        weights.append(0.10 if self.model_loaded else 0.20)
+        color_w = 0.10 if self.model_loaded else 0.20
+        weights.append(color_w)
+        logger.info(f"[SPOOF]  4. Color         : {color_score:.4f} (weight={color_w})")
 
         # 5. Specular highlight detection (screen reflections)
-        specular_score, specular_details = self._detect_specular_highlights(face_region)
+        try:
+            specular_score, specular_details = self._detect_specular_highlights(face_region)
+        except Exception as e:
+            logger.warning(f"Specular detection failed: {e}")
+            specular_score, specular_details = 0.5, {'error': str(e)}
         details['specular'] = specular_details
         scores.append(specular_score)
-        weights.append(0.10 if self.model_loaded else 0.15)
+        specular_w = 0.10 if self.model_loaded else 0.15
+        weights.append(specular_w)
+        logger.info(f"[SPOOF]  5. Specular      : {specular_score:.4f} (weight={specular_w})")
 
         # 6. Noise pattern analysis (real cameras have characteristic noise)
-        noise_score, noise_details = self._analyze_noise_pattern(face_region)
+        try:
+            noise_score, noise_details = self._analyze_noise_pattern(face_region)
+        except Exception as e:
+            logger.warning(f"Noise analysis failed: {e}")
+            noise_score, noise_details = 0.5, {'error': str(e)}
         details['noise'] = noise_details
         scores.append(noise_score)
-        weights.append(0.05 if self.model_loaded else 0.15)
+        noise_w = 0.05 if self.model_loaded else 0.20
+        weights.append(noise_w)
+        logger.info(f"[SPOOF]  6. Noise         : {noise_score:.4f} (weight={noise_w})")
 
         # Weighted combination
         total_weight = sum(weights)
         final_score = sum(s * w for s, w in zip(scores, weights)) / total_weight
+        logger.info(f"[SPOOF] Weighted raw score: {final_score:.4f} (total_weight={total_weight:.2f})")
 
-        # Apply strict threshold: if any critical test fails badly, reject
+        # Apply strict threshold: require multiple critical signals to clamp score
+        # Single sub-detector failure alone is unreliable (e.g. moiré false-positive on webcam JPEG)
         critical_failures = []
         if moire_score < 0.25:
             critical_failures.append('moire_pattern_detected')
@@ -237,9 +280,16 @@ class SpoofDetector:
         if specular_score < 0.20:
             critical_failures.append('screen_reflection_detected')
 
-        if critical_failures:
+        if len(critical_failures) >= 2:
+            # Multiple signals agree — high confidence spoof
+            pre_clamp = final_score
             final_score = min(final_score, 0.35)
             details['critical_failures'] = critical_failures
+            logger.warning(f"[SPOOF] Multiple critical failures {critical_failures} — clamped {pre_clamp:.4f} → {final_score:.4f}")
+        elif critical_failures:
+            # Single signal — note it but don't override the weighted score
+            details['critical_warnings'] = critical_failures
+            logger.info(f"[SPOOF] Single warning (not clamping): {critical_failures}")
 
         details['final_score'] = float(final_score)
         details['individual_scores'] = {
@@ -250,6 +300,7 @@ class SpoofDetector:
             'noise': noise_score
         }
 
+        logger.info(f"[SPOOF] FINAL SCORE: {final_score:.4f}")
         return float(final_score), details
 
     def _detect_moire_pattern(self, face_img: np.ndarray) -> Tuple[float, dict]:
@@ -272,16 +323,15 @@ class SpoofDetector:
         center_y, center_x = h // 2, w // 2
 
         # Create masks for different frequency bands
-        # Low frequency (center)
-        low_mask = np.zeros((h, w), dtype=bool)
-        cv2.circle(low_mask.astype(np.uint8), (center_x, center_y),
-                   min(h, w) // 8, 1, -1)
-        low_mask = low_mask.astype(bool)
+        # Low frequency (center) — small circle around DC component
+        low_mask_u8 = np.zeros((h, w), dtype=np.uint8)
+        cv2.circle(low_mask_u8, (center_x, center_y), min(h, w) // 8, 1, -1)
+        low_mask = low_mask_u8.astype(bool)
 
-        # High frequency (edges)
-        high_mask = np.ones((h, w), dtype=bool)
-        cv2.circle(high_mask.astype(np.uint8), (center_x, center_y),
-                   min(h, w) // 3, 0, -1)
+        # High frequency (edges) — outside a larger circle
+        high_circle_u8 = np.zeros((h, w), dtype=np.uint8)
+        cv2.circle(high_circle_u8, (center_x, center_y), min(h, w) // 3, 1, -1)
+        high_mask = ~high_circle_u8.astype(bool)
 
         # Mid frequency (moiré patterns typically appear here)
         mid_mask = ~low_mask & ~high_mask
@@ -314,15 +364,25 @@ class SpoofDetector:
             'peak_ratio': float(peak_ratio),
         }
 
-        # Scoring: High mid-frequency energy or many peaks = likely screen
-        if peak_ratio > 0.02 or mid_ratio > 0.45:
-            score = 0.2  # Strong moiré indication
-        elif peak_ratio > 0.01 or mid_ratio > 0.40:
-            score = 0.4  # Moderate indication
-        elif mid_ratio > 0.35:
-            score = 0.6  # Slight indication
+        logger.info(f"[MOIRE] peak_ratio={peak_ratio:.6f}, mid_ratio={mid_ratio:.4f}, high_ratio={high_ratio:.4f}")
+
+        # Scoring: High mid-frequency energy AND many peaks = likely screen
+        # Webcam JPEG compression naturally produces frequency domain artifacts:
+        #   - mid_ratio typically 0.35-0.45 for normal webcam captures
+        #   - peak_ratio typically 0.005-0.02 from JPEG block boundaries
+        # Screen captures show MUCH higher values:
+        #   - mid_ratio > 0.50 with peak_ratio > 0.03
+        # We use very conservative thresholds to avoid false positives on real webcams.
+        if peak_ratio > 0.03 and mid_ratio > 0.50:
+            score = 0.15  # Very strong moiré: clearly a screen capture
+        elif peak_ratio > 0.02 and mid_ratio > 0.47:
+            score = 0.30  # Strong moiré indication
+        elif peak_ratio > 0.015 and mid_ratio > 0.45:
+            score = 0.45  # Moderate moiré indication
+        elif peak_ratio > 0.01 and mid_ratio > 0.43:
+            score = 0.55  # Mild indication
         else:
-            score = 0.85  # Likely real
+            score = 0.80  # Normal webcam image (JPEG artifacts are expected)
 
         return score, details
 
@@ -499,22 +559,23 @@ class SpoofDetector:
             'screen_highlight_ratio': float(screen_highlight_ratio),
             'rectangular_highlights': rectangular_count,
         }
+        logger.info(f"[SPECULAR] bright_ratio={bright_ratio:.4f}, screen_highlight_ratio={screen_highlight_ratio:.4f}, rect_count={rectangular_count}")
 
-        score = 0.7
+        score = 0.8  # Higher base — real faces often have natural highlights
 
-        # Scoring
-        if screen_highlight_ratio > 0.05:
-            score -= 0.3
-        elif screen_highlight_ratio > 0.02:
-            score -= 0.15
+        # Scoring — only penalize strong indicators of screen display
+        if screen_highlight_ratio > 0.10:
+            score -= 0.35  # Very strong screen reflection
+        elif screen_highlight_ratio > 0.05:
+            score -= 0.20
 
-        if rectangular_count > 2:
-            score -= 0.25
-        elif rectangular_count > 0:
+        if rectangular_count > 3:
+            score -= 0.25  # Many rectangular bright spots = screen bezels
+        elif rectangular_count > 1:
             score -= 0.1
 
-        if bright_ratio > 0.1:
-            score -= 0.15
+        if bright_ratio > 0.15:
+            score -= 0.15  # Large overexposed areas
 
         score = max(0.0, min(1.0, score))
 
@@ -544,8 +605,17 @@ class SpoofDetector:
         noise_shifted_x = np.roll(noise, 1, axis=1)
         noise_shifted_y = np.roll(noise, 1, axis=0)
 
-        corr_x = np.corrcoef(noise.flatten(), noise_shifted_x.flatten())[0, 1]
-        corr_y = np.corrcoef(noise.flatten(), noise_shifted_y.flatten())[0, 1]
+        # Guard against NaN from corrcoef when noise is all zeros (flat/overexposed regions)
+        if noise_std < 1e-6:
+            corr_x = 0.0
+            corr_y = 0.0
+        else:
+            corr_x = np.corrcoef(noise.flatten(), noise_shifted_x.flatten())[0, 1]
+            corr_y = np.corrcoef(noise.flatten(), noise_shifted_y.flatten())[0, 1]
+            if np.isnan(corr_x):
+                corr_x = 0.0
+            if np.isnan(corr_y):
+                corr_y = 0.0
 
         spatial_corr = (abs(corr_x) + abs(corr_y)) / 2
 

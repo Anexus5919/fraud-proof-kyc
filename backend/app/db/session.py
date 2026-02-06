@@ -1,15 +1,24 @@
 import ssl
 import re
+import logging
 from urllib.parse import urlparse, parse_qs, unquote
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
 # Parse database URL and handle SSL/options for asyncpg
 database_url = settings.database_url
+
+# Log DB connection info (mask password)
+_parsed = urlparse(database_url)
+_safe_url = database_url.replace(f":{_parsed.password}@", ":****@") if _parsed.password else database_url
+logger.info(f"[DB] Database URL: {_safe_url}")
+logger.info(f"[DB] Host: {_parsed.hostname}, Port: {_parsed.port}, DB: {_parsed.path}, User: {_parsed.username}")
 
 # Extract endpoint from options parameter if present
 endpoint_id = None

@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+
+# Startup config validation
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+logger.info(f"[STARTUP] .env file path: {_env_path}")
+logger.info(f"[STARTUP] .env file exists: {_env_path.exists()}")
+_db_url = settings.database_url
+_masked = _db_url.split("@")[0].rsplit(":", 1)[0] + ":****@" + _db_url.split("@")[1] if "@" in _db_url else _db_url
+logger.info(f"[STARTUP] DATABASE_URL loaded: {_masked}")
+logger.info(f"[STARTUP] CORS origins: {settings.cors_origins}")
+logger.info(f"[STARTUP] Spoof threshold: {settings.spoof_threshold}")
+logger.info(f"[STARTUP] Duplicate threshold: {settings.duplicate_threshold}")
 
 
 @asynccontextmanager
@@ -49,7 +61,7 @@ app = FastAPI(
 )
 
 # Configure CORS
-origins = [origin.strip() for origin in settings.cors_origins.split(",")]
+origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -57,6 +69,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request/Response logging middleware
+import time as _time
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        start = _time.time()
+        logger.info(f"[HTTP] --> {request.method} {request.url.path} (from {request.client.host if request.client else '?'})")
+        response = await call_next(request)
+        elapsed = _time.time() - start
+        logger.info(f"[HTTP] <-- {request.method} {request.url.path} → {response.status_code} ({elapsed:.3f}s)")
+        return response
+
+
+app.add_middleware(RequestLoggingMiddleware)
 
 # Include routers
 app.include_router(verify.router)

@@ -32,8 +32,16 @@ async def find_similar_faces(
     if threshold is None:
         threshold = settings.duplicate_threshold
 
+    logger.info(f"[DEDUP] Searching for similar faces — threshold={threshold}, limit={limit}, "
+               f"embedding_norm={float(np.linalg.norm(embedding)):.4f}")
+
     # Convert embedding to PostgreSQL vector string format
     embedding_str = '[' + ','.join(map(str, embedding.tolist())) + ']'
+
+    # First check how many active faces exist in DB
+    count_result = await db.execute(text("SELECT COUNT(*) FROM customer_faces WHERE status = 'active'"))
+    active_count = count_result.scalar()
+    logger.info(f"[DEDUP] Active faces in DB: {active_count}")
 
     # Query using pgvector cosine distance operator
     # Use CAST instead of :: to avoid asyncpg parameter binding issues
@@ -70,6 +78,14 @@ async def find_similar_faces(
             "distance": float(row.distance)
         })
 
+    if matches:
+        logger.info(f"[DEDUP] Found {len(matches)} match(es):")
+        for i, m in enumerate(matches):
+            logger.info(f"  [{i+1}] customer={m['customer_id']}, name={m['customer_name']}, "
+                       f"similarity={m['similarity']:.4f}, distance={m['distance']:.4f}")
+    else:
+        logger.info("[DEDUP] No duplicates found — face is unique")
+
     return matches
 
 
@@ -93,6 +109,8 @@ async def add_face_embedding(
     Returns:
         ID of the inserted record
     """
+    logger.info(f"[DEDUP] Storing embedding — customer_id={customer_id}, name={customer_name}")
+
     embedding_str = '[' + ','.join(map(str, embedding.tolist())) + ']'
     metadata_str = json.dumps(metadata or {}, default=str)
 
@@ -115,6 +133,7 @@ async def add_face_embedding(
     row = result.fetchone()
     await db.commit()
 
+    logger.info(f"[DEDUP] Stored successfully — record_id={row.id}")
     return str(row.id)
 
 

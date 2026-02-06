@@ -49,9 +49,10 @@ function LivenessCheck() {
   const canvasRef = useRef(null);
   const captureCanvasRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const isProcessingRef = useRef(false); // Synchronous guard — prevents duplicate API calls across animation frames
 
   const [qualityResults, setQualityResults] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Async state for UI rendering only
   const [qualityPassed, setQualityPassed] = useState(false); // Tracks if user can start challenges
 
   // Set canvas ref callback
@@ -77,6 +78,9 @@ function LivenessCheck() {
           canvasRef.current
         );
         setQualityResults(quality);
+        if (quality.allPassed && !qualityPassed) {
+          console.log('%c[KYC] All quality checks PASSED', 'color: #16a34a; font-weight: bold');
+        }
         setQualityPassed(quality.allPassed);
       }
 
@@ -94,12 +98,14 @@ function LivenessCheck() {
         const challengePassed = checkChallenge(blendshapes, landmarks);
 
         if (challengePassed) {
+          const ch = getCurrentChallenge();
+          console.log(`%c[KYC] Challenge PASSED: ${ch?.name || 'unknown'}`, 'color: #16a34a; font-weight: bold');
           onChallengePassed();
         }
       }
 
-      // Capturing phase
-      if (state.currentState === STATES.CAPTURING && !isProcessing) {
+      // Capturing phase — use ref for synchronous check to prevent duplicate calls
+      if (state.currentState === STATES.CAPTURING && !isProcessingRef.current) {
         handleCapture();
       }
     }
@@ -110,17 +116,24 @@ function LivenessCheck() {
     isMediaPipeReady,
     detectForVideo,
     state.currentState,
+    qualityPassed,
     isInChallengeState,
     checkChallenge,
+    getCurrentChallenge,
     onQualityPassed,
     onChallengePassed,
-    isProcessing,
   ]);
 
   // Handle frame capture and verification
   const handleCapture = useCallback(async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
+    // Synchronous ref check — blocks next animation frame immediately
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setIsProcessing(true); // Update UI state (async, but ref already blocks duplicates)
+
+    console.log('%c[KYC] Starting capture & verification...', 'color: #2563eb; font-weight: bold');
+    console.log('[KYC] Session:', state.sessionId);
+    console.log('[KYC] Challenges completed:', state.completedChallenges);
 
     try {
       // Analyze motion data for anti-spoofing
@@ -128,9 +141,17 @@ function LivenessCheck() {
       const motionAnalysis = motionAnalyzer.analyze();
       const motionSummary = motionAnalyzer.getSummary();
 
+      console.log('[KYC] Motion analysis:', {
+        ready: motionAnalysis.ready,
+        isLikelyReal: motionAnalysis.isLikelyReal,
+        livenessScore: motionAnalysis.livenessScore,
+        flags: motionAnalysis.flags,
+        summary: motionSummary,
+      });
+
       // Client-side motion check - reject obvious spoofs early
       if (motionAnalysis.ready && !motionAnalysis.isLikelyReal) {
-        console.warn('Motion analysis detected potential spoof:', motionAnalysis.flags);
+        console.warn('[KYC] Motion analysis detected potential spoof:', motionAnalysis.flags);
 
         // If motion analysis strongly suggests a spoof, warn user
         if (motionAnalysis.livenessScore < 0.3) {
@@ -139,6 +160,7 @@ function LivenessCheck() {
             message: 'We detected unnatural motion patterns. Please use a live camera, not a photo or video.',
             canDispute: true,
           });
+          isProcessingRef.current = false;
           setIsProcessing(false);
           return;
         }
@@ -166,25 +188,29 @@ function LivenessCheck() {
       });
 
       if (result.status === 'success') {
+        console.log('%c[KYC] RESULT: SUCCESS', 'color: #16a34a; font-weight: bold; font-size: 14px');
         onVerifySuccess(result);
       } else if (result.status === 'duplicate_found' || result.status === 'flagged' || result.status === 'pending_review') {
+        console.log('%c[KYC] RESULT: PENDING REVIEW', 'color: #d97706; font-weight: bold; font-size: 14px');
         onVerifyFlagged(result);
       } else {
         // Handle spoof_detected, deepfake_detected, rejected, error
+        console.log(`%c[KYC] RESULT: FAILED (${result.status})`, 'color: #dc2626; font-weight: bold; font-size: 14px');
+        console.log('[KYC] Failure details:', result);
         onVerifyFailure(result);
       }
     } catch (error) {
-      console.error('Verification error:', error);
+      console.error('[KYC] Verification exception:', error);
       onVerifyFailure({
         status: 'error',
         message: error.message || 'Verification failed. Please try again.',
         canDispute: true,
       });
     } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
     }
   }, [
-    isProcessing,
     captureFrame,
     onCaptureComplete,
     state.sessionId,
@@ -222,6 +248,9 @@ function LivenessCheck() {
 
   // Handle retry
   const handleRetry = useCallback(() => {
+    console.log('%c[KYC] === RETRY — resetting everything ===', 'color: #d97706; font-weight: bold');
+    isProcessingRef.current = false;
+    setIsProcessing(false);
     setQualityPassed(false);
     setQualityResults(null);
     resetMotionAnalyzer(); // Reset motion tracking
@@ -232,16 +261,19 @@ function LivenessCheck() {
   // Handle manual start of challenges
   const handleStartChallenges = useCallback(() => {
     if (qualityPassed) {
+      console.log('%c[KYC] Starting challenges...', 'color: #2563eb; font-weight: bold');
       onQualityPassed();
     }
   }, [qualityPassed, onQualityPassed]);
 
   // Start camera and detection when user clicks begin
   const handleBegin = useCallback(async () => {
+    console.log('%c[KYC] === VERIFICATION SESSION STARTED ===', 'color: #2563eb; font-weight: bold; font-size: 14px');
     resetMotionAnalyzer(); // Reset motion tracking for new session
     start();
     await startCamera();
-  }, [start, startCamera]);
+    console.log('[KYC] Camera started, MediaPipe ready:', isMediaPipeReady);
+  }, [start, startCamera, isMediaPipeReady]);
 
   // Initialize MediaPipe when ready and camera is streaming
   useEffect(() => {

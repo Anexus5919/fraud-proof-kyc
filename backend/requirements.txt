@@ -13,6 +13,7 @@ numpy>=1.26.0
 opencv-python-headless>=4.9.0
 pillow>=10.2.0
 onnxruntime>=1.17.0
+huggingface_hub>=0.20.0
 
 # InsightFace for face embedding
 insightface>=0.7.3

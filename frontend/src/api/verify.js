@@ -18,6 +18,16 @@ export async function verifyFace({ image, sessionId, challengesCompleted, motion
     body.motionAnalysis = motionAnalysis;
   }
 
+  console.log('%c[KYC API] POST /api/verify', 'color: #2563eb; font-weight: bold');
+  console.log('[KYC API] Request:', {
+    sessionId,
+    challengesCompleted,
+    imageSize: `${image.length} chars (${Math.round(image.length * 0.75 / 1024)} KB)`,
+    motionAnalysis: motionAnalysis || 'none',
+  });
+
+  const startTime = performance.now();
+
   const response = await fetch(`${API_URL}/api/verify`, {
     method: 'POST',
     headers: {
@@ -26,12 +36,55 @@ export async function verifyFace({ image, sessionId, challengesCompleted, motion
     body: JSON.stringify(body),
   });
 
+  const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Network error' }));
+    console.error(`[KYC API] Response ERROR (${elapsed}s):`, response.status, error);
     throw new Error(error.message || 'Verification failed');
   }
 
-  return response.json();
+  const result = await response.json();
+
+  // Detailed response logging
+  console.log(`%c[KYC API] Response (${elapsed}s): ${result.status}`,
+    `color: ${result.status === 'success' ? '#16a34a' : result.status === 'pending_review' ? '#d97706' : '#dc2626'}; font-weight: bold`);
+  console.log('[KYC API] Full response:', result);
+
+  if (result.layer_results) {
+    console.group('[KYC] Verification Layer Results');
+    const layers = result.layer_results;
+    if (layers.layer1_face_detection) {
+      const l1 = layers.layer1_face_detection;
+      console.log(`  L1 Face Detection : ${l1.status} (confidence: ${l1.confidence || 'N/A'})`);
+    }
+    if (layers.layer2_liveness) {
+      const l2 = layers.layer2_liveness;
+      console.log(`  L2 Liveness       : %c${l2.status}%c (score: ${l2.score})`,
+        l2.status === 'passed' ? 'color: green' : 'color: red', '');
+    }
+    if (layers.layer3_deepfake) {
+      const l3 = layers.layer3_deepfake;
+      console.log(`  L3 Deepfake       : %c${l3.status}%c (score: ${l3.score})`,
+        l3.status === 'passed' ? 'color: green' : 'color: red', '');
+    }
+    if (layers.layer4_duplicate) {
+      const l4 = layers.layer4_duplicate;
+      console.log(`  L4 Duplicate      : ${l4.status} (matches: ${l4.matches_found})`);
+    }
+    if (layers.layer5_risk_score) {
+      const l5 = layers.layer5_risk_score;
+      console.log(`  L5 Risk Score     : ${l5.score}/100 (${l5.level}) → ${l5.decision}`);
+      if (l5.flags?.length) console.warn('  Risk flags:', l5.flags);
+    }
+    console.groupEnd();
+  }
+
+  if (result.risk_score !== undefined) {
+    console.log(`[KYC] Risk: ${result.risk_score}/100 (${result.risk_level})`);
+  }
+
+  return result;
 }
 
 // Submit dispute when user claims they are real

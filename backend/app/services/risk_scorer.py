@@ -137,12 +137,23 @@ class RiskScorer:
             for factor, weight in self.WEIGHTS.items()
         )
 
+        logger.info(f"[RISK] Factor risks (0=safe, 100=risky):")
+        for factor, weight in self.WEIGHTS.items():
+            risk_val = factors[factor]
+            contribution = risk_val * weight
+            logger.info(f"  {factor:15s}: risk={risk_val:6.2f} × weight={weight:.2f} = {contribution:6.2f}")
+        logger.info(f"[RISK] Weighted sum (before overrides): {weighted_score:.2f}")
+
         # Apply critical flags that override the score
         if 'deepfake_suspected' in flags and deepfake_risk > 70:
+            pre = weighted_score
             weighted_score = max(weighted_score, 65)  # Force high risk
+            logger.warning(f"[RISK] Override: deepfake_suspected + risk={deepfake_risk:.1f} → score {pre:.2f} → {weighted_score:.2f}")
 
         if 'spoof_suspected' in flags and liveness_risk > 70:
+            pre = weighted_score
             weighted_score = max(weighted_score, 65)  # Force high risk
+            logger.warning(f"[RISK] Override: spoof_suspected + risk={liveness_risk:.1f} → score {pre:.2f} → {weighted_score:.2f}")
 
         # Round to integer
         final_score = int(round(weighted_score))
@@ -159,7 +170,7 @@ class RiskScorer:
             level = RiskLevel.HIGH
             decision = RiskDecision.AUTO_REJECT
 
-        logger.info(f"Risk assessment: score={final_score}, level={level.value}, decision={decision.value}")
+        logger.info(f"[RISK] RESULT: score={final_score}, level={level.value}, decision={decision.value}, flags={flags}")
 
         return RiskAssessment(
             score=final_score,
@@ -313,7 +324,7 @@ class RiskScorer:
         risk = 15.0
         details = {}
 
-        user_agent = device_data.get('user_agent', '')
+        user_agent = device_data.get('user_agent') or ''
         suspicious_ua = ['headless', 'phantom', 'selenium', 'puppeteer', 'bot']
         if any(s in user_agent.lower() for s in suspicious_ua):
             risk += 40

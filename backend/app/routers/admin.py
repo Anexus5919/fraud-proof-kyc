@@ -114,7 +114,7 @@ async def get_review(
             cf.customer_name as matched_name_from_db
         FROM review_queue r
         LEFT JOIN customer_faces cf ON cf.customer_id = r.matched_customer_id
-        WHERE r.id = :review_id::uuid
+        WHERE r.id = CAST(:review_id AS uuid)
     """)
 
     result = await db.execute(query, {"review_id": review_id})
@@ -153,7 +153,7 @@ async def approve_review(
     try:
         # Get review details
         get_query = text("""
-            SELECT * FROM review_queue WHERE id = :review_id::uuid AND status = 'pending'
+            SELECT * FROM review_queue WHERE id = CAST(:review_id AS uuid) AND status = 'pending'
         """)
         result = await db.execute(get_query, {"review_id": review_id})
         review = result.fetchone()
@@ -162,20 +162,23 @@ async def approve_review(
             raise HTTPException(status_code=404, detail="Review not found or already processed")
 
         # Add the new face to database
+        # The embedding comes from review_queue as a pgvector type — pass it through
+        # using CAST to ensure correct type handling with asyncpg
         insert_query = text("""
             INSERT INTO customer_faces (customer_id, customer_name, embedding, metadata)
-            VALUES (
+            SELECT
                 :customer_id,
                 :customer_name,
-                :embedding,
-                '{"from_review": true}'::jsonb
-            )
+                rq.new_embedding,
+                CAST('{"from_review": true}' AS jsonb)
+            FROM review_queue rq
+            WHERE rq.id = CAST(:review_id AS uuid)
         """)
 
         await db.execute(insert_query, {
             "customer_id": review.new_customer_id,
             "customer_name": review.new_customer_name,
-            "embedding": str(review.new_embedding) if review.new_embedding else None
+            "review_id": review_id
         })
 
         # Update review status
@@ -185,7 +188,7 @@ async def approve_review(
                 reviewed_by = 'admin',
                 reviewed_at = :now,
                 review_notes = :notes
-            WHERE id = :review_id::uuid
+            WHERE id = CAST(:review_id AS uuid)
         """)
 
         await db.execute(update_query, {
@@ -225,7 +228,7 @@ async def reject_review(
                 reviewed_by = 'admin',
                 reviewed_at = :now,
                 review_notes = :notes
-            WHERE id = :review_id::uuid AND status = 'pending'
+            WHERE id = CAST(:review_id AS uuid) AND status = 'pending'
             RETURNING id
         """)
 

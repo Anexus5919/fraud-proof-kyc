@@ -72,6 +72,12 @@ export function useFaceLandmarker() {
       return null;
     }
 
+    // Guard: video must have valid dimensions and data ready
+    // Without this, MediaPipe crashes with "roi->width > 0 && roi->height > 0"
+    if (videoElement.readyState < 2 || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+      return null;
+    }
+
     // Only process if video time has changed
     if (videoElement.currentTime === lastVideoTimeRef.current) {
       return null;
