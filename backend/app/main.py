@@ -60,16 +60,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
-origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Request/Response logging middleware
 import time as _time
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -86,7 +76,20 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return response
 
 
+# Middleware order matters: last added = outermost (processes first)
+# 1. Logging middleware (inner)
 app.add_middleware(RequestLoggingMiddleware)
+
+# 2. CORS middleware (outer — must be outermost to handle preflight OPTIONS)
+origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+logger.info(f"[CORS] Allowed origins: {origins}")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include routers
 app.include_router(verify.router)
