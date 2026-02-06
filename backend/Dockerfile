@@ -2,12 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# System deps for opencv, insightface, onnxruntime
+# System deps: build tools for insightface (Cython), opencv, onnxruntime
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential python3-dev \
     libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps
+# Install Cython first (insightface build dependency)
+RUN pip install --no-cache-dir cython numpy
+
+# Install remaining Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
