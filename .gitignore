@@ -69,3 +69,7 @@ htmlcov/
 *.bak
 *.tmp
 .cache/
+
+# Windows reserved names
+nul
+NUL
