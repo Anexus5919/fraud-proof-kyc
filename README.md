@@ -99,7 +99,7 @@ The system uses 3 random challenges from:
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for deployment instructions using:
 
 - **Frontend/Admin**: Vercel (free)
-- **Backend**: Render (free)
+- **Backend**: Railway (free)
 - **Database**: Neon (free PostgreSQL with pgvector)
 - **Images**: Cloudinary (free)
 
