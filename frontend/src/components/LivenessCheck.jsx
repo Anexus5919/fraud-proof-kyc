@@ -437,10 +437,10 @@ function LivenessCheck() {
   // Render error state
   if (cameraError || mediaPipeError) {
     return (
-      <div className="max-w-md mx-auto p-6 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+      <div className="max-w-md mx-auto p-8 text-center">
+        <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-red-50 ring-1 ring-red-200/60 flex items-center justify-center">
           <svg
-            className="w-8 h-8 text-red-600"
+            className="w-8 h-8 text-red-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -448,18 +448,18 @@ function LivenessCheck() {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={2}
+              strokeWidth={1.5}
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">
           Something went wrong
         </h2>
-        <p className="text-gray-600 mb-6">{cameraError || mediaPipeError}</p>
+        <p className="text-slate-500 mb-8 leading-relaxed">{cameraError || mediaPipeError}</p>
         <button
           onClick={() => window.location.reload()}
-          className="py-2 px-6 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
+          className="py-2.5 px-8 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm"
         >
           Refresh Page
         </button>
@@ -470,46 +470,54 @@ function LivenessCheck() {
   // Render idle state (start screen)
   if (state.currentState === STATES.IDLE) {
     return (
-      <div className="max-w-md mx-auto p-6 text-center">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+      <div className="max-w-md mx-auto px-6 py-8 text-center">
+        {/* Hero section */}
+        <div className="mb-10">
+          <div className="w-16 h-16 mx-auto mb-6 bg-slate-900 rounded-2xl flex items-center justify-center shadow-md">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <h1 className="text-[28px] font-semibold text-slate-900 mb-3 leading-tight">
             Identity Verification
           </h1>
-          <p className="text-gray-600">
+          <p className="text-slate-500 text-[15px] leading-relaxed max-w-sm mx-auto">
             We need to verify that you're a real person. This will take about 30 seconds.
           </p>
         </div>
 
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg text-left">
-          <h3 className="font-medium text-gray-900 mb-3">Before you begin:</h3>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Find a well-lit area
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Remove glasses and hats
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Face the camera directly
-            </li>
+        {/* Preparation checklist */}
+        <div className="mb-10 bg-white rounded-2xl p-6 text-left shadow-sm ring-1 ring-slate-200/60">
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">Before you begin:</h3>
+          <ul className="space-y-3">
+            {[
+              { icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707', text: 'Find a well-lit area' },
+              { icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', text: 'Remove glasses and hats' },
+              { icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', text: 'Face the camera directly' },
+            ].map((item, i) => (
+              <li key={i} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm text-slate-600">{item.text}</span>
+              </li>
+            ))}
           </ul>
         </div>
 
         <button
           onClick={handleBegin}
           disabled={isLoadingMediaPipe}
-          className="w-full py-3 px-6 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3.5 px-6 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors shadow-sm"
         >
-          {isLoadingMediaPipe ? 'Loading...' : 'Begin Verification'}
+          {isLoadingMediaPipe ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Preparing...
+            </span>
+          ) : 'Begin Verification'}
         </button>
       </div>
     );
@@ -522,7 +530,7 @@ function LivenessCheck() {
     state.currentState === STATES.FLAGGED
   ) {
     return (
-      <div className="max-w-md mx-auto p-6">
+      <div className="max-w-md mx-auto px-6 py-4">
         <ResultScreen
           status={state.verificationResult?.status || state.currentState}
           message={state.verificationResult?.message}
@@ -546,8 +554,8 @@ function LivenessCheck() {
   const spoofSuspected = evaluationProgress >= 100 && visibleAllPass && !qualityPassed;
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+    <div className="max-w-5xl mx-auto px-4">
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
         {/* Left column: Camera feed + evaluation progress bar */}
         <div className="w-full lg:w-[55%]">
           <CameraFeed
@@ -558,26 +566,26 @@ function LivenessCheck() {
 
           {/* Evaluation progress bar — only during quality check */}
           {state.currentState === STATES.QUALITY_CHECK && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+            <div className="mt-5 max-w-md mx-auto">
+              <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
                 <span className="font-medium">
                   {evaluationProgress >= 100
                     ? qualityPassed ? 'Evaluation complete' : 'Evaluation done — checks failing'
                     : 'Evaluating face liveness'}
                 </span>
-                <span>{evalSeconds}s / 10s</span>
+                <span className="font-mono text-slate-400">{evalSeconds}s / 10s</span>
               </div>
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-linear ${
                     evaluationProgress >= 100
-                      ? qualityPassed ? 'bg-green-500' : 'bg-amber-500'
+                      ? qualityPassed ? 'bg-emerald-500' : 'bg-amber-500'
                       : 'bg-blue-500'
                   }`}
                   style={{ width: `${evaluationProgress}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-1.5">
+              <p className="text-[11px] text-slate-400 mt-2">
                 {evaluationProgress < 100
                   ? 'Hold still and face the camera — analyzing motion patterns...'
                   : qualityPassed
@@ -593,8 +601,8 @@ function LivenessCheck() {
           {/* Initializing */}
           {state.currentState === STATES.INITIALIZING && (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600 mx-auto mb-3" />
-              <p className="text-gray-600">Setting up...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-blue-500 mx-auto mb-4" />
+              <p className="text-slate-500 text-sm">Setting up...</p>
             </div>
           )}
 
@@ -605,8 +613,8 @@ function LivenessCheck() {
 
               {/* Spoof alert — shown when hidden blink check fails after timer completes */}
               {spoofSuspected && (
-                <div className="mt-3 flex items-center gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="mt-3 flex items-center gap-2.5 p-3 bg-red-50 ring-1 ring-red-200/60 rounded-xl">
+                  <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <span className="text-sm font-medium text-red-800 flex-1">Spoof attempt detected</span>
@@ -614,9 +622,9 @@ function LivenessCheck() {
                     <svg className="w-4.5 h-4.5 text-red-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+                    <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
                       Remove spectacles and try again
-                      <div className="absolute top-full right-2 w-2 h-2 bg-gray-900 rotate-45 -translate-y-1" />
+                      <div className="absolute top-full right-2 w-2 h-2 bg-slate-900 rotate-45 -translate-y-1" />
                     </div>
                   </div>
                 </div>
@@ -625,12 +633,12 @@ function LivenessCheck() {
               <button
                 onClick={handleStartChallenges}
                 disabled={!qualityPassed || evaluationProgress < 100}
-                className={`w-full mt-4 py-3 px-6 rounded-lg font-medium transition-colors ${
+                className={`w-full mt-5 py-3 px-6 rounded-xl font-medium transition-colors shadow-sm ${
                   qualityPassed && evaluationProgress >= 100
-                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                     : spoofSuspected
-                    ? 'bg-red-200 text-red-500 cursor-not-allowed'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'bg-red-100 text-red-400 cursor-not-allowed shadow-none'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                 }`}
               >
                 {evaluationProgress < 100
@@ -658,39 +666,43 @@ function LivenessCheck() {
           {/* Ready to capture — user must look at camera and press spacebar */}
           {state.currentState === STATES.READY_TO_CAPTURE && (
             <div className="text-center">
-              <div className="mb-4">
-                <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
-                  captureReady ? 'bg-green-100' : 'bg-amber-100'
+              <div className="mb-5">
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-colors ${
+                  captureReady ? 'bg-emerald-50 ring-1 ring-emerald-200/60' : 'bg-amber-50 ring-1 ring-amber-200/60'
                 }`}>
-                  <svg className={`w-8 h-8 ${captureReady ? 'text-green-600' : 'text-amber-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg className={`w-7 h-7 ${captureReady ? 'text-emerald-600' : 'text-amber-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">
                   Challenges Complete
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-slate-500 mb-4">
                   Now look directly at the camera for your verification photo.
                 </p>
               </div>
 
               {/* Capture quality checks */}
               {captureQualityResults && (
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="space-y-1.5">
+                <div className="mb-5 p-3 bg-white rounded-xl ring-1 ring-slate-200/60">
+                  <div className="space-y-1">
                     {captureQualityResults.checks.map((check) => (
-                      <div key={check.name} className="flex items-center gap-2 text-xs">
+                      <div key={check.name} className="flex items-center gap-2.5 px-1 py-1 text-xs">
                         {check.passed ? (
-                          <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                          <div className="w-4.5 h-4.5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                            <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
                         ) : (
-                          <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
-                          </svg>
+                          <div className="w-4.5 h-4.5 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <svg className="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01" />
+                            </svg>
+                          </div>
                         )}
-                        <span className={check.passed ? 'text-gray-600' : 'text-amber-700'}>
+                        <span className={check.passed ? 'text-slate-600' : 'text-amber-700'}>
                           {check.message}
                         </span>
                       </div>
@@ -703,17 +715,17 @@ function LivenessCheck() {
               <button
                 onClick={handleCaptureConfirm}
                 disabled={!captureReady}
-                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                className={`w-full py-3 px-6 rounded-xl font-medium transition-colors shadow-sm ${
                   captureReady
-                    ? 'bg-gray-900 text-white hover:bg-gray-800'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'bg-slate-900 text-white hover:bg-slate-800'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                 }`}
               >
                 {captureReady ? 'Capture Photo' : 'Please look directly at the camera'}
               </button>
               {captureReady && (
-                <p className="text-xs text-gray-400 mt-2">
-                  or press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">Space</kbd> to capture
+                <p className="text-[11px] text-slate-400 mt-3">
+                  or press <kbd className="px-1.5 py-0.5 bg-slate-100 ring-1 ring-slate-200 rounded text-slate-500 font-mono text-[10px]">Space</kbd> to capture
                 </p>
               )}
             </div>
@@ -723,8 +735,8 @@ function LivenessCheck() {
           {state.currentState === STATES.CAPTURING && (
             <div className="text-center py-12">
               <div className="animate-pulse">
-                <div className="w-4 h-4 bg-red-500 rounded-full mx-auto mb-3" />
-                <p className="text-gray-600">Capturing...</p>
+                <div className="w-5 h-5 bg-red-500 rounded-full mx-auto mb-4 shadow-sm" />
+                <p className="text-slate-500 text-sm">Capturing...</p>
               </div>
             </div>
           )}
@@ -732,8 +744,11 @@ function LivenessCheck() {
           {/* Processing */}
           {state.currentState === STATES.PROCESSING && (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600 mx-auto mb-3" />
-              <p className="text-gray-600">Verifying your identity...</p>
+              <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-blue-500" />
+              </div>
+              <p className="text-slate-500 text-sm">Verifying your identity...</p>
+              <p className="text-[11px] text-slate-400 mt-1">This may take a few seconds</p>
             </div>
           )}
         </div>
@@ -741,16 +756,16 @@ function LivenessCheck() {
 
       {/* Reading prompt — full width below columns, only during quality check */}
       {state.currentState === STATES.QUALITY_CHECK && (
-        <div className="mt-5 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="mt-6 p-5 bg-white rounded-2xl ring-1 ring-slate-200/60 shadow-sm">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-1">Please read the following aloud</p>
-              <p className="text-sm text-gray-800 leading-relaxed italic">"{READING_PARAGRAPH}"</p>
+              <p className="text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Please read the following aloud</p>
+              <p className="text-[13px] text-slate-700 leading-relaxed italic">"{READING_PARAGRAPH}"</p>
             </div>
           </div>
         </div>

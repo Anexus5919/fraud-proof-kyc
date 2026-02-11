@@ -2,7 +2,7 @@ function QualityGate({ qualityResults, isChecking }) {
   if (!qualityResults) {
     return (
       <div className="text-center py-4">
-        <p className="text-gray-600">Checking image quality...</p>
+        <p className="text-slate-500 text-sm">Checking image quality...</p>
       </div>
     );
   }
@@ -15,10 +15,10 @@ function QualityGate({ qualityResults, isChecking }) {
     <div className="space-y-3">
       {/* Main message — only show visible check status */}
       <div
-        className={`text-center p-3 rounded-lg ${
+        className={`text-center px-4 py-2.5 rounded-xl ${
           visibleAllPassed
-            ? 'bg-green-50 text-green-800'
-            : 'bg-amber-50 text-amber-800'
+            ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60'
+            : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/60'
         }`}
       >
         <p className="font-medium text-sm">
@@ -27,32 +27,36 @@ function QualityGate({ qualityResults, isChecking }) {
       </div>
 
       {/* Check list — compact for side panel, hidden checks excluded */}
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {visibleChecks.map((check) => (
           <div
             key={check.name}
-            className={`flex items-center gap-2 px-2 py-1 rounded ${
-              check.passed ? 'text-green-700' : 'text-amber-700'
+            className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-colors duration-150 ${
+              check.passed ? 'text-emerald-700' : 'text-amber-700'
             }`}
           >
             {check.passed ? (
-              <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             ) : (
-              <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+              <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <svg className="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01" />
+                </svg>
+              </div>
             )}
-            <span className="text-xs">{check.message}</span>
+            <span className="text-[13px]">{check.message}</span>
           </div>
         ))}
       </div>
 
       {/* Loading indicator */}
       {isChecking && !allPassed && (
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600" />
+        <div className="flex justify-center pt-1">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-200 border-t-blue-500" />
         </div>
       )}
     </div>

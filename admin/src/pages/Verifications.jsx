@@ -27,20 +27,20 @@ function Verifications() {
 
   const getResultBadge = (result) => {
     const styles = {
-      success: 'bg-green-100 text-green-700',
-      pending_review: 'bg-amber-100 text-amber-700',
-      rejected: 'bg-red-100 text-red-700',
-      spoof_detected: 'bg-red-100 text-red-700',
-      deepfake_detected: 'bg-purple-100 text-purple-700',
-      duplicate_found: 'bg-amber-100 text-amber-700',
+      success: 'bg-emerald-50 text-emerald-700',
+      pending_review: 'bg-amber-50 text-amber-700',
+      rejected: 'bg-red-50 text-red-700',
+      spoof_detected: 'bg-red-50 text-red-700',
+      deepfake_detected: 'bg-purple-50 text-purple-700',
+      duplicate_found: 'bg-amber-50 text-amber-700',
     };
-    return styles[result] || 'bg-gray-100 text-gray-600';
+    return styles[result] || 'bg-slate-100 text-slate-600';
   };
 
   const getRiskBadge = (score) => {
     if (score == null) return null;
     if (score <= 30)
-      return <span className="text-green-600 font-medium">{score}</span>;
+      return <span className="text-emerald-600 font-medium">{score}</span>;
     if (score <= 60)
       return <span className="text-amber-600 font-medium">{score}</span>;
     return <span className="text-red-600 font-medium">{score}</span>;
@@ -66,8 +66,8 @@ function Verifications() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Verification Log</h1>
-        <p className="text-gray-500">{total} total verification attempts</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Verification Log</h1>
+        <p className="text-slate-500 text-[15px]">{total} total verification attempts</p>
       </div>
 
       {/* Filters */}
@@ -76,10 +76,10 @@ function Verifications() {
           <button
             key={f.label}
             onClick={() => setResultFilter(f.value)}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               resultFilter === f.value
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             {f.label}
@@ -89,64 +89,64 @@ function Verifications() {
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-blue-500" />
         </div>
       ) : verifications.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <p className="text-gray-500">No verifications found</p>
+        <div className="text-center py-12 bg-white rounded-xl ring-1 ring-slate-200/60 shadow-sm">
+          <p className="text-slate-500">No verifications found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl ring-1 ring-slate-200/60 shadow-sm overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Spoof</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deepfake</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flags</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP</th>
+              <tr className="bg-slate-50/80 border-b border-slate-100">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Time</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Session</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Result</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Risk</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Spoof</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Deepfake</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Flags</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">IP</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {verifications.map((v) => (
-                <tr key={v.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-4 py-3 text-sm text-slate-600">
                     {v.created_at ? new Date(v.created_at).toLocaleString() : ''}
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono text-gray-500">
+                  <td className="px-4 py-3 text-xs font-mono text-slate-500">
                     {v.session_id?.slice(0, 12)}...
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getResultBadge(v.result)}`}>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getResultBadge(v.result)}`}>
                       {v.result}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    {getRiskBadge(v.risk_score) || <span className="text-gray-400">-</span>}
+                    {getRiskBadge(v.risk_score) || <span className="text-slate-400">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-slate-600">
                     {v.spoof_score != null ? v.spoof_score.toFixed(2) : '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-slate-600">
                     {v.deepfake_score != null ? v.deepfake_score.toFixed(2) : '-'}
                   </td>
                   <td className="px-4 py-3">
                     {v.flags && v.flags.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {v.flags.map((flag, i) => (
-                          <span key={i} className="px-1.5 py-0.5 rounded text-xs bg-red-50 text-red-600">
+                          <span key={i} className="px-1.5 py-0.5 rounded-md text-xs bg-red-50 text-red-600">
                             {flag}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400 text-sm">-</span>
+                      <span className="text-slate-400 text-sm">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400 font-mono">
+                  <td className="px-4 py-3 text-xs text-slate-400 font-mono">
                     {v.ip_address || '-'}
                   </td>
                 </tr>

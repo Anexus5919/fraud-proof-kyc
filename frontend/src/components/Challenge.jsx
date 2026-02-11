@@ -33,28 +33,42 @@ function Challenge({
 
   return (
     <div className="space-y-6">
-      {/* Progress indicator */}
-      <div className="flex justify-center gap-2">
+      {/* Step indicators */}
+      <div className="flex items-center justify-center gap-2">
         {Array.from({ length: totalChallenges }).map((_, idx) => (
-          <div
-            key={idx}
-            className={`w-3 h-3 rounded-full transition-colors duration-300 ${
-              idx < challengeNumber - 1
-                ? 'bg-green-500'
-                : idx === challengeNumber - 1
-                ? 'bg-blue-500'
-                : 'bg-gray-300'
-            }`}
-          />
+          <div key={idx} className="flex items-center">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
+                idx < challengeNumber - 1
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : idx === challengeNumber - 1
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'bg-slate-200 text-slate-400'
+              }`}
+            >
+              {idx < challengeNumber - 1 ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                idx + 1
+              )}
+            </div>
+            {idx < totalChallenges - 1 && (
+              <div className={`w-6 h-0.5 mx-1 transition-colors duration-300 ${
+                idx < challengeNumber - 1 ? 'bg-emerald-400' : 'bg-slate-200'
+              }`} />
+            )}
+          </div>
         ))}
       </div>
 
       {/* Challenge info */}
       <div className="text-center">
-        <p className="text-sm text-gray-500 mb-1">
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
           Challenge {challengeNumber} of {totalChallenges}
         </p>
-        <h2 className="text-2xl font-semibold text-gray-900">
+        <h2 className="text-2xl font-semibold text-slate-900">
           {challenge.instruction}
         </h2>
       </div>
@@ -62,31 +76,33 @@ function Challenge({
       {/* Timer */}
       <div className="flex justify-center">
         <div
-          className={`text-4xl font-mono ${
-            timeLeft <= 3 ? 'text-red-600' : 'text-gray-700'
+          className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl font-mono text-2xl font-bold transition-colors ${
+            timeLeft <= 3
+              ? 'bg-red-50 text-red-600 ring-1 ring-red-200/60'
+              : 'bg-slate-100 text-slate-700 ring-1 ring-slate-200/60'
           }`}
         >
-          {timeLeft}s
+          {timeLeft}
         </div>
       </div>
 
       {/* Hold progress */}
       <div className="max-w-xs mx-auto">
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-green-500 transition-all duration-100"
+            className="h-full bg-emerald-500 rounded-full transition-all duration-100"
             style={{ width: `${holdPercentage}%` }}
           />
         </div>
         {holdPercentage > 0 && (
-          <p className="text-center text-sm text-green-600 mt-2">
+          <p className="text-center text-sm font-medium text-emerald-600 mt-2">
             Hold it...
           </p>
         )}
       </div>
 
       {/* Hint */}
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-slate-400">
         Perform the action and hold for a moment
       </p>
     </div>

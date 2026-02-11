@@ -37,7 +37,7 @@ function Dashboard({ onNavigate }) {
         <div className="text-red-600 mb-4">Error: {error}</div>
         <button
           onClick={fetchData}
-          className="px-4 py-2 bg-gray-900 text-white rounded-lg"
+          className="px-4 py-2 bg-slate-900 text-white rounded-xl"
         >
           Retry
         </button>
@@ -49,8 +49,8 @@ function Dashboard({ onNavigate }) {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Overview of KYC verification activity</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+        <p className="text-slate-500 text-[15px]">Overview of KYC verification activity</p>
       </div>
 
       {/* Stats */}
@@ -104,16 +104,16 @@ function Dashboard({ onNavigate }) {
       {/* Reviews section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Duplicate Reviews</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Duplicate Reviews</h2>
           <div className="flex gap-2">
             {['pending', 'approved', 'rejected'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   statusFilter === status
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -124,12 +124,12 @@ function Dashboard({ onNavigate }) {
 
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-blue-500" />
           </div>
         ) : reviews.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <div className="text-center py-12 bg-white rounded-xl ring-1 ring-slate-200/60 shadow-sm">
             <svg
-              className="w-12 h-12 mx-auto text-gray-300 mb-4"
+              className="w-12 h-12 mx-auto text-slate-300 mb-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -141,7 +141,7 @@ function Dashboard({ onNavigate }) {
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p className="text-gray-500">No {statusFilter} reviews</p>
+            <p className="text-slate-500">No {statusFilter} reviews</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
