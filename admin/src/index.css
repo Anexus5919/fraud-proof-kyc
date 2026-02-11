@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  font-size: 14.5px;
+}
+
 :root {
   --color-primary: #0f172a;
   --color-surface: #f8fafc;

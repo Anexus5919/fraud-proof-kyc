@@ -10,7 +10,7 @@ function StatsCard({ title, value, icon, color = 'blue' }) {
 
   return (
     <div className="bg-white rounded-xl ring-1 ring-slate-200/60 shadow-sm p-5 hover:shadow-md transition-shadow relative overflow-hidden">
-      <div className={`absolute top-0 left-0 w-full h-0.5 ${s.accent}`} />
+      <div className={`absolute top-0 left-0 w-full h-1 ${s.accent}`} />
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">{title}</p>
