@@ -117,7 +117,7 @@ async def add_face_embedding(
     metadata_str = json.dumps(metadata or {}, default=str)
 
     query = text("""
-        INSERT INTO customer_faces (customer_id, customer_name, embedding, metadata, face_image)
+        INSERT INTO customer_faces (customer_id, customer_name, embedding, extra_metadata, face_image)
         VALUES (:customer_id, :customer_name, CAST(:embedding AS vector), CAST(:metadata AS jsonb), :face_image)
         RETURNING id
     """)
