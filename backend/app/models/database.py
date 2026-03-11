@@ -15,7 +15,7 @@ class CustomerFace(Base):
     embedding = Column(Vector(512), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String(50), default="active", index=True)
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
 
 
 class ReviewQueue(Base):
