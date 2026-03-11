@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routers import verify, admin
+from app.db.session import engine, Base
 
 # Configure logging
 logging.basicConfig(
@@ -33,6 +34,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     # Startup
     logger.info("Starting KYC Liveness Detection API...")
+        # Ensure database tables exist
+    try:
+        logger.info("Creating database tables if they do not exist...")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables checked/created successfully")
+    except Exception as e:
+        logger.error(f"Database table initialization failed: {e}")
 
     # Pre-load ML models for faster first request
     try:
