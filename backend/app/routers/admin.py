@@ -277,8 +277,12 @@ async def list_customers(
 
         query = text(f"""
             SELECT
-                id, customer_id, customer_name, face_image,
-                created_at, status, metadata
+                id,
+                customer_id,
+                customer_name,
+                created_at,
+                status,
+                extra_metadata
             FROM customer_faces
             {where_clause}
             ORDER BY created_at DESC
@@ -289,12 +293,13 @@ async def list_customers(
 
         customers = []
         for row in result:
-            meta = row.metadata or {}
+            meta = row.extra_metadata or {}
+
             customers.append({
                 "id": str(row.id),
                 "customer_id": row.customer_id,
                 "customer_name": row.customer_name,
-                "face_image": row.face_image,
+                "face_image": meta.get("face_image"),
                 "created_at": row.created_at.isoformat() if row.created_at else None,
                 "status": row.status,
                 "risk_score": meta.get("risk_score"),
@@ -304,7 +309,6 @@ async def list_customers(
             })
 
         return {"customers": customers, "total": total}
-
     except Exception as e:
         logger.exception(f"Error listing customers: {e}")
         raise HTTPException(status_code=500, detail="Failed to list customers")
