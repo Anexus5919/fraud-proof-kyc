@@ -10,6 +10,7 @@ ENV/
 env/
 *.egg-info/
 .eggs/
+init_db.py
 
 # Environment
 .env

@@ -3,7 +3,8 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.db.session import engine
+from app.db.base import Base
 from app.config import get_settings
 from app.routers import verify, admin
 from app.db.session import engine, Base
